@@ -115,7 +115,19 @@ grep -rn "23-pulse\|10-admin\|20-iagencyaia\|21-wingman\|22-trader\|25-scalper\|
   ~/repos/github.com/BankCurfew/office-v2/loops.json
 ```
 
-### 8. Statusline Colored Bars (Local-only, Lost)
+### 8. Feed Hook CLAUDE_AGENT_NAME Defaults to "echo" (Dashboard Bug)
+
+**Problem**: The global `~/.claude/settings.json` PreToolUse/PostToolUse/Stop hooks used `${CLAUDE_AGENT_NAME:-echo}` to identify oracles in feed.log. But `CLAUDE_AGENT_NAME` is a Claude Code built-in that defaults to `"echo"` when not explicitly set. Result: EVERY oracle wrote to feed.log as "echo", making Echo-Oracle's avatar animate constantly on the dashboard while all other oracles appeared idle.
+
+**Fix**: Changed the fallback to derive the oracle name from the project directory:
+```bash
+$(basename "${CLAUDE_PROJECT_DIR:-$(pwd)}")
+```
+This produces `Dev-Oracle`, `QA-Oracle`, etc. — the actual repo directory name.
+
+**Prevention**: Never use `CLAUDE_AGENT_NAME` as an oracle identifier in hooks — it's a Claude Code internal that defaults to "echo". Use `CLAUDE_PROJECT_DIR` basename or `ORACLE_NAME` env var instead.
+
+### 9. Statusline Colored Bars (Local-only, Lost)
 
 **Problem**: The statusline-command.sh was enhanced on HQ to show colored visual bars (█░) for context window, 5-hour rate limit, and 7-day rate limit usage. This enhancement was never committed — only the original text-only version existed in git.
 
