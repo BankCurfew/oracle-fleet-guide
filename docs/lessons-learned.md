@@ -100,6 +100,14 @@ done
 | T+7h | All 26 oracles briefed, 20+ ACK'd | 1h |
 | T+8h | Fleet self-organizing, active work resuming | — |
 
+### 7. Statusline Colored Bars (Local-only, Lost)
+
+**Problem**: The statusline-command.sh was enhanced on HQ to show colored visual bars (█░) for context window, 5-hour rate limit, and 7-day rate limit usage. This enhancement was never committed — only the original text-only version existed in git.
+
+**Fix**: Rebuilt the bars and committed to `maw-js/config/statusline-command.sh`.
+
+**Prevention**: After modifying ANY shared script (`~/.claude/`, `~/.oracle/`), immediately copy back to the source repo and commit.
+
 ## Checklist: Things to Commit BEFORE Next Migration
 
 - [ ] Pulse CLI source code
