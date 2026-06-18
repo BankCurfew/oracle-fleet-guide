@@ -127,7 +127,23 @@ This produces `Dev-Oracle`, `QA-Oracle`, etc. — the actual repo directory name
 
 **Prevention**: Never use `CLAUDE_AGENT_NAME` as an oracle identifier in hooks — it's a Claude Code internal that defaults to "echo". Use `CLAUDE_PROJECT_DIR` basename or `ORACLE_NAME` env var instead.
 
-### 9. Statusline Colored Bars (Local-only, Lost)
+### 9. Hardcoded tmux Targets in Service Source Code (LINE/Discord Relay)
+
+**Problem**: `Admin-Oracle/src/aia-line.ts` had `20-iagencyaia:0` hardcoded in 4 places — LINE messages from AIA customers were sent to the killed numbered session, never reaching iAgencyAIA-Oracle. Same issue in `discord-bot.ts` (`21-wingman:0`), `followup-engine.ts`, and `bot.ts`.
+
+**Fix**: `sed -i 's|20-iagencyaia:0|iagencyaia:0|g'` across 5 files. Restarted `pm2 restart aia-line bob-discord` + `pm2 save`.
+
+**Prevention**: After killing numbered tmux sessions, grep ALL service source code too — not just hooks:
+```bash
+grep -rn "20-\|21-\|22-\|23-\|25-\|26-\|10-admin" \
+  ~/repos/github.com/BankCurfew/Admin-Oracle/src/ \
+  ~/repos/github.com/BankCurfew/maw-js/src/ \
+  ~/repos/github.com/BankCurfew/office-v2/src/
+```
+
+Note: `01-bob:0` is intentionally kept — BoB's tmux session IS `01-bob`.
+
+### 10. Statusline Colored Bars (Local-only, Lost)
 
 **Problem**: The statusline-command.sh was enhanced on HQ to show colored visual bars (█░) for context window, 5-hour rate limit, and 7-day rate limit usage. This enhancement was never committed — only the original text-only version existed in git.
 
