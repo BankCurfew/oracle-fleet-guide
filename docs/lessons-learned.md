@@ -213,6 +213,18 @@ grep -r "project_ref=" ~/repos/github.com/BankCurfew/*-Oracle/.mcp.json 2>/dev/n
 4. Customer DB tables verified: birthday_gift_links, customer_policies, bot_chat_log
 5. service_role key stored in vault for direct DB access
 
+### 13. Cloudflare Pages Deploys from Staging, Not Main
+
+**Problem**: iagencyaiafatools auto-deploys from `staging` branch, not `main`. 4 PRs merged to main but never deployed — QA found stale Jun 16 build while fixes were from Jun 18. Main was 48 commits ahead of staging.
+
+**Fix**: `git checkout staging && git merge main && git push`
+
+**Prevention**: After merging PRs, always check if the deploy branch matches:
+```bash
+gh api repos/<org>/<repo>/compare/staging...main --jq '"\(.ahead_by) commits ahead"'
+```
+If ahead > 0, merge main → staging to trigger deploy.
+
 ## Checklist: Things to Commit BEFORE Next Migration
 
 - [x] Pulse CLI source code (fixed — was .gitignored, now committed)
