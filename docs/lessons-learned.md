@@ -192,6 +192,27 @@ grep -rl "SUPABASE" ~/repos/github.com/BankCurfew/*-Oracle/.env ~/repos/github.c
 ls ~/.oracle/security/*supabase* ~/.oracle/security/*supa* 2>/dev/null
 ```
 
+### 12. OAuth Tokens + Supabase Project Mismatch (iAgencyAIA)
+
+**Problem**: iAgencyAIA's OAuth tokens for CRM/portal were local on HQ — not migrated. Also, Supabase MCP was configured with `PlanYourFuturePro` project ref, not the AIA KB project. Oracle could see wrong database.
+
+**Fix**: Used `service_role` key directly for DB access. OAuth tokens need fresh setup on curfew.
+
+**Prevention**:
+```bash
+# Check OAuth token files
+find ~/repos/github.com/BankCurfew/*-Oracle -name "*oauth*" -o -name "*token*" -o -name "*.credentials" 2>/dev/null
+# Verify Supabase project ref matches the correct database
+grep -r "project_ref=" ~/repos/github.com/BankCurfew/*-Oracle/.mcp.json 2>/dev/null
+```
+
+**iAgencyAIA's 5-item checklist for migration**:
+1. OAuth tokens must be re-created on new machine
+2. Supabase MCP project_ref must match AIA KB (not PlanYourFuturePro)
+3. LINE relay tmux target must match actual session name
+4. Customer DB tables verified: birthday_gift_links, customer_policies, bot_chat_log
+5. service_role key stored in vault for direct DB access
+
 ## Checklist: Things to Commit BEFORE Next Migration
 
 - [x] Pulse CLI source code (fixed — was .gitignored, now committed)
