@@ -178,9 +178,23 @@ dig api.vuttipipat.com CNAME +short
 
 **Prevention**: After modifying ANY shared script (`~/.claude/`, `~/.oracle/`), immediately copy back to the source repo and commit.
 
+### 11. Supabase Service Keys — Per-Oracle Credential Setup
+
+**Problem**: Data-Oracle and Wingman had no Supabase access after migration. The service keys were in HQ's vault but not transferred. Data couldn't query `discord_members`, `discord_conversations`, `bot_chat_log`, `aia_knowledge` tables.
+
+**Fix**: Data requested key through Security-Oracle (proper channel). Key stored at `~/.oracle/security/supabase-aia-kb.env`. Wingman verified 4 tables operational independently.
+
+**Prevention**: After migration, verify each oracle's database access:
+```bash
+# Check which oracles need Supabase
+grep -rl "SUPABASE" ~/repos/github.com/BankCurfew/*-Oracle/.env ~/repos/github.com/BankCurfew/*-Oracle/.mcp.json 2>/dev/null
+# Verify credentials exist
+ls ~/.oracle/security/*supabase* ~/.oracle/security/*supa* 2>/dev/null
+```
+
 ## Checklist: Things to Commit BEFORE Next Migration
 
-- [ ] Pulse CLI source code
+- [x] Pulse CLI source code (fixed — was .gitignored, now committed)
 - [ ] maw task activity logs (export to JSON)
 - [ ] GPG keyring backup
 - [ ] All creative writing drafts
