@@ -225,6 +225,34 @@ gh api repos/<org>/<repo>/compare/staging...main --jq '"\(.ahead_by) commits ahe
 ```
 If ahead > 0, merge main → staging to trigger deploy.
 
+### 14. Two CF Pages Projects for Same Codebase (tools.iagencyaia.com)
+
+**Problem**: `iagencyaiafatools` has TWO separate Cloudflare Pages projects:
+
+| Project | Domain | Branch | Deploy |
+|---------|--------|--------|--------|
+| `fatools-staging` | `fatools.vuttipipat.com` | staging | Auto (github:push) |
+| `fatools` | `tools.iagencyaia.com` | main | **MANUAL** (wrangler ad_hoc) |
+
+BotDev deployed fixes to `fatools-staging` (auto-deploy) but `tools.iagencyaia.com` (production) runs from a DIFFERENT project that requires manual `wrangler pages deploy`. 5 PRs merged and "deployed" but เมย์ saw zero changes for 2 days.
+
+**Fix**: `cd iagencyaiafatools && bun run build && npx wrangler pages deploy dist --project-name=fatools`
+
+**Prevention**:
+```bash
+# After ANY code merge, deploy to BOTH projects
+npx wrangler pages deploy dist --project-name=fatools         # production
+npx wrangler pages deploy dist --project-name=fatools-staging # staging
+
+# Or check which project serves which domain
+curl -s "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT/pages/projects" \
+  -H "Authorization: Bearer $CF_TOKEN" | python3 -c "
+import json,sys
+for p in json.load(sys.stdin)['result']:
+    print(f'{p[\"name\"]:25s} → {p.get(\"domains\",[])}')
+"
+```
+
 ## Checklist: Things to Commit BEFORE Next Migration
 
 - [x] Pulse CLI source code (fixed — was .gitignored, now committed)
