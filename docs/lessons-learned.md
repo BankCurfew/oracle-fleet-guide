@@ -10,6 +10,25 @@
 | **Writer's dark/ folder** | Local content not committed | Abyssal Eden creative writing lost | Commit all creative work to git, even drafts |
 | **maw project task links** | Local-only (projects recreated empty) | 11 projects had zero tasks after migration | Sync task state to GitHub issues or Supabase |
 
+## Discovered During Recovery (add to migration checklist)
+
+### 6. Oracle .claude/settings.json — Hook Paths
+
+**Problem**: Designer-Oracle's `.claude/settings.json` still had `/home/mbank` in all hook paths. Every hook failed with "not found". 7 other oracles had NO settings.json at all — they ran without hooks (no rtk, no pulse-ticket-check, no feed-activity).
+
+**Fix**: `sed -i 's|/home/mbank|/home/curfew|g'` on Designer's settings.json. Created settings.json from template for 6 oracles that were missing it (Cost, Recruiter, Scalper, Trader, Wingman, iAgencyAIA).
+
+**Prevention**: Add `.claude/settings.json` to the path fix script. Verify EVERY oracle has a settings.json with correct paths. Add to migration checklist:
+```bash
+# Fix all settings.json
+find ~/repos/github.com/BankCurfew -path "*/.claude/settings.json" -exec sed -i "s|$OLD|$NEW|g" {} \;
+
+# Check for missing settings.json
+for dir in ~/repos/github.com/BankCurfew/*-Oracle; do
+  [ -f "$dir/.claude/settings.json" ] || echo "MISSING: $(basename $dir)"
+done
+```
+
 ## What Almost Broke Us
 
 ### 1. bun-linux Stub (Silent Killer)
