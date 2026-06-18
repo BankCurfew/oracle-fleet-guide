@@ -100,7 +100,22 @@ done
 | T+7h | All 26 oracles briefed, 20+ ACK'd | 1h |
 | T+8h | Fleet self-organizing, active work resuming | — |
 
-### 7. Statusline Colored Bars (Local-only, Lost)
+### 7. Hooks with Hardcoded Numbered tmux Sessions
+
+**Problem**: `pulse-auto-cc.sh` and `auto-cc-bob.sh` in `~/.oracle/hooks/` had `23-pulse:0` hardcoded. After we killed the numbered duplicate sessions, Pulse stopped receiving auto-cc notifications from ALL oracles. No issue creates, closes, dispatches, or git pushes were being tracked — Pulse was blind.
+
+Similarly, `office-v2/loops.json` had `10-admin:0` for 2 loops.
+
+**Fix**: `sed -i 's|23-pulse:0|pulse|g'` in both hook files. Fixed loops.json too.
+
+**Prevention**: After killing numbered tmux sessions, grep ALL hooks and configs for the old names:
+```bash
+grep -rn "23-pulse\|10-admin\|20-iagencyaia\|21-wingman\|22-trader\|25-scalper\|26-videoeditor" \
+  ~/.oracle/hooks/ ~/.claude/hooks/ ~/.local/bin/ \
+  ~/repos/github.com/BankCurfew/office-v2/loops.json
+```
+
+### 8. Statusline Colored Bars (Local-only, Lost)
 
 **Problem**: The statusline-command.sh was enhanced on HQ to show colored visual bars (█░) for context window, 5-hour rate limit, and 7-day rate limit usage. This enhancement was never committed — only the original text-only version existed in git.
 
