@@ -143,7 +143,34 @@ grep -rn "20-\|21-\|22-\|23-\|25-\|26-\|10-admin" \
 
 Note: `01-bob:0` is intentionally kept — BoB's tmux session IS `01-bob`.
 
-### 10. Statusline Colored Bars (Local-only, Lost)
+### 10. Cloudflare Tunnel DNS — Old Tunnel CNAME (LINE Relay Dead)
+
+**Problem**: `api.vuttipipat.com` CNAME pointed to the dead HQ tunnel (`vuttihome` / `445cb309`). LINE webhook requests hit Cloudflare error 1033 — never reached curfew. Customer messages stopped flowing to iAgencyAIA.
+
+**Fix**: `cloudflared tunnel route dns --overwrite-dns curfew api.vuttipipat.com` — updated CNAME to the curfew tunnel (`9c73fa50`). Also added `api.vuttipipat.com → localhost:3200` to cloudflared config.yml ingress rules.
+
+**Key files**:
+- `~/.cloudflared/config.yml` — ingress rules for both hostnames
+- `~/.oracle/security/line-jarvis.env` — confirms `LINE_WEBHOOK_URL=https://api.vuttipipat.com/webhook`
+- `Admin-Oracle/scripts/update-webhook.sh` — LINE webhook URL update script
+
+**Two tunnels exist** (only one active):
+| Tunnel | ID | Status |
+|--------|-----|--------|
+| `curfew` | `9c73fa50-42d0-4612-8816-8d883c3ab49f` | ACTIVE |
+| `vuttihome` | `445cb309-4d50-4547-ae06-a95d38a69ea1` | DEAD (old HQ) |
+
+**Prevention**: After migration, check ALL Cloudflare DNS CNAMEs that reference tunnels:
+```bash
+# List all tunnel routes
+cloudflared tunnel route dns list
+
+# Check which tunnel a hostname points to
+dig api.vuttipipat.com CNAME +short
+# Should contain the ACTIVE tunnel ID, not the dead one
+```
+
+### 11. Statusline Colored Bars (Local-only, Lost)
 
 **Problem**: The statusline-command.sh was enhanced on HQ to show colored visual bars (█░) for context window, 5-hour rate limit, and 7-day rate limit usage. This enhancement was never committed — only the original text-only version existed in git.
 
