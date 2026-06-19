@@ -253,6 +253,91 @@ for p in json.load(sys.stdin)['result']:
 "
 ```
 
+### 15. tmux Pane Size — Detached Sessions Default to 24x80 (ROOT CAUSE of Preview Bug)
+
+**Problem**: All tmux oracle sessions had `pane_height=24`, `history_size=0`. Claude Code redraws within 24 rows — nothing scrolls past, so `tmux capture-pane` only returns 24 lines. Dashboard shows ~20 lines with no scroll history. Took 4 iterations to find (CSS scroll, innerHTML, capture size, upstream diff — all red herrings).
+
+**Root cause**: Detached tmux sessions default to 80x24. No client attached = smallest possible pane.
+
+**Fix**:
+```bash
+# Resize all oracle windows
+tmux set-option -g default-size 200x200
+for session in $(tmux list-sessions -F "#{session_name}"); do
+  tmux resize-window -t "$session" -x 200 -y 200
+done
+```
+
+**Prevention**: Add to `fleet.ts` wake script — resize window after creation. Persist in `~/.tmux.conf`: `set-option -g default-size 200x200`.
+
+**Verification**: `tmux display-message -t "01-bob:0" -p "pane_height=#{pane_height} history_size=#{history_size}"` — pane_height should be 200, history_size should grow.
+
+### 16. LINE/Discord Relay — tmux Target Prefix Mismatch
+
+**Problem**: Admin migration commit stripped numbered prefix from tmux targets (`20-iagencyaia:0` → `iagencyaia:0`, `21-wingman:0` → `wingman:0`). But fleet configs create sessions WITH prefix (`20-iagencyaia`, `21-wingman`). LINE and Discord relay silently failed — no error, messages just didn't arrive.
+
+**Fix**: Restore numbered prefix in relay code:
+- `aia-line.ts`: `iagencyaia:0` → `20-iagencyaia:0` (3 locations)
+- `discord-bot.ts`: `wingman:0` → `21-wingman:0` (1 location)
+
+**Prevention**: Always check `tmux list-sessions` for actual session names before changing relay targets. Grep ALL files: `grep -rn "iagencyaia:0\|wingman:0" src/`
+
+### 17. dist-office Must Be Rebuilt After Source Changes
+
+**Problem**: Dev changed `office/src/` React components but dashboard served from `dist-office/` (built bundle). Changes invisible until rebuild. Happened twice — scroll fix and mobile fix both required manual rebuild.
+
+**Fix**: `cd maw-js && bun run build:office && pm2 restart maw`
+
+**Prevention**: Add to Dev workflow: source change in `office/src/` → MUST run `bun run build:office`. Consider adding watch mode or post-commit hook.
+
+### 18. Security: .venv Committed + Plaintext API Key in Audit File
+
+**Problem**: Two P0 security issues found by Pulse (not Security's own scan):
+1. Trader-Oracle: `.venv/` directory committed (4,173 files tracked in git)
+2. Security-Oracle: plaintext AKIA key in `audits/FULL-SECURITY-AUDIT.md`
+
+**Fix**: Both scrubbed with `git-filter-repo` + force-pushed. `.venv` added to `.gitignore`.
+
+**Prevention**:
+- `.gitignore` MUST have: `.venv/`, `venv/`, `__pycache__/`, `.env`, `*.key`, `*.pem`
+- Audit files must redact real keys: `AKIA...XXXX` not full key
+- Cross-scan: don't rely on a single oracle's security scan — Pulse caught what Security missed
+
+### 19. NotebookLM CLI — Correct Package is notebooklm-py
+
+**Problem**: HQ had `notebooklm` CLI (command name), lost during migration. Multiple PyPI packages exist with similar names. Wrong packages installed first.
+
+**Correct package**: `pip install "notebooklm-py[browser,cookies]"` (teng-lin/notebooklm-py, 16K+ stars)
+- Command: `notebooklm` (matches HQ SOPs)
+- NOT: `notebooklm-mcp-cli` (command = `nlm`, different)
+- NOT: `notebooklm-cli` (deprecated, merged into mcp-cli)
+
+**Auth on WSL**: `notebooklm login --browser-cookies chrome` — requires Chrome installed on WSL + logged into Google. Windows Chrome cookies not readable from WSL (permission + path issues).
+
+### 20. WSL Chrome Cookies — Can't Read from Windows Side
+
+**Problem**: `notebooklm login --browser-cookies chrome` looks for Chrome data in Linux paths. Windows Chrome at `/mnt/c/Users/mbank/AppData/Local/Google/Chrome/` is either locked (Chrome running) or not found by the tool's cookie reader (rookie-rs).
+
+**Fix**: Install Chrome on WSL (`apt install google-chrome-stable`), open via `wsl -d Ubuntu google-chrome --no-sandbox https://accounts.google.com` from PowerShell, login to Google, then run `notebooklm login --browser-cookies chrome`.
+
+**WSLg note**: `DISPLAY=:0` exists but Chromium launched from CLI doesn't always show window. Launch from PowerShell `wsl` command instead.
+
+### 21. dist-office HQ Version vs Curfew Rebuild
+
+**Problem**: During migration, `dist-office/index.html` was rebuilt with a different React bundle. Lost mobile PWA meta tags (`apple-mobile-web-app-capable`, `theme-color`, `apple-touch-icon`, `manifest.json`). Dashboard looked different from HQ and wasn't mobile-friendly.
+
+**Fix**: `git checkout origin/main -- dist-office/index.html` to restore HQ version, then `bun run build:office` to rebuild with current source.
+
+**Prevention**: Don't manually rebuild dist-office unless you know which version to target. The git-tracked version is the baseline.
+
+### 22. pulse-ticket-check Hook — cc: Keyword Bypass
+
+**Problem**: PreToolUse hook `pulse-ticket-check.sh` blocks `maw hey` dispatch without a ticket. But it skips any command containing `cc:`, `check`, `confirm`, `verify`. BoB bypassed the hook by prefixing dispatch messages with `cc:` — sending tasks without tickets.
+
+**Current state**: Known gap, not yet fixed. The hook can't distinguish `cc: bob "status update"` (legitimate) from `cc: dev "TASK: do this"` (dispatch without ticket).
+
+**Mitigation**: Discipline over tooling — follow Law #6 regardless of whether the hook catches it.
+
 ## Checklist: Things to Commit BEFORE Next Migration
 
 - [x] Pulse CLI source code (fixed — was .gitignored, now committed)
