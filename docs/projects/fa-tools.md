@@ -292,14 +292,35 @@ echo "Production: $PROD_INDEX | Local: $LOCAL_INDEX"
 # MUST match. If not, redeploy.
 ```
 
+### TWO CF Pages Projects (CRITICAL — deploy to BOTH)
+
+There are TWO separate Cloudflare Pages projects. Both must be active.
+
+| CF Project | Domain | Branch | DNS Provider | Purpose |
+|-----------|--------|--------|-------------|---------|
+| `fatools` | tools.iagencyaia.com | main | MakeWebEasy (แบงค์ only) | **PRODUCTION** (customer-facing) |
+| `fatools-staging` | fatools.vuttipipat.com | main | Cloudflare (BoB/Admin) | **STAGING/internal** |
+
+**2026-06-20 Incident:** `fatools` project had `deployments_enabled=FALSE` for weeks. All wrangler deploys went to `fatools-staging` only. tools.iagencyaia.com was stuck on an old build. Fixed by enabling auto-deploy on `fatools`.
+
+**Verify after every deploy:**
+```bash
+# Both domains must show the same JS hash
+curl -s https://tools.iagencyaia.com | grep -oE 'index-[a-zA-Z0-9]+\.js'
+curl -s https://fatools.vuttipipat.com | grep -oE 'index-[a-zA-Z0-9]+\.js'
+# If different → fatools project deploy is broken
+```
+
+**DNS Note:** iagencyaia.com DNS is on MakeWebEasy, not Cloudflare. Only แบงค์ can change DNS records. vuttipipat.com is on Cloudflare.
+
 ### Branch Strategy
 
 | Branch | Environment | URL |
 |--------|-------------|-----|
-| `staging` | Staging | fatools.vuttipipat.com |
-| `main` | Production | tools.iagencyaia.com |
+| `main` | Production | tools.iagencyaia.com + fatools.vuttipipat.com |
+| `staging` | Testing | staging preview URLs only |
 
-Flow: Push staging → test → merge main → deploy production.
+Flow: Push to main → auto-deploy to BOTH CF Pages projects.
 
 ### Environment Variables
 
