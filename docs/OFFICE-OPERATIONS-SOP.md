@@ -23,7 +23,8 @@
 | **QA** | Quality Director | Testing, validation, edge cases | BoB |
 | **Designer** | Creative Director | UI/UX, mockups, visual design | BoB → Dev |
 | **Admin** | Head of DevOps | Deploy, infra, monitoring, scripts | BoB → QA |
-| **AIA (ฟ้าใส)** | Executive Secretary | AIA portal, email, ePOS, customer data | BoB |
+| **AIA** | Executive Secretary | AIA portal, email, ePOS, customer data | BoB |
+| **FaSai (ฟ้าใส)** | Insurance Portal Ops | iAgencyAIA web portal, insurance ops, API testing | BoB |
 | **Data** | Data Engineer | KB, embeddings, pipelines, scraping | BoB → Dev |
 | **Writer** | Content Director | Docs, copy, blog posts, style | BoB → DocCon |
 | **Researcher** | Chief Research Officer | Market analysis, benchmarks | BoB → Writer |

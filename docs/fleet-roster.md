@@ -19,7 +19,7 @@
 | AIA | aia | AIA-Oracle | aia-office | AIA Operations | AIA portal, ePOS, customer data |
 | Admin | admin | Admin-Oracle | aia-office | Head of DevOps | Deploy, restart, ops, monitoring, infra |
 | BotDev | botdev | BotDev-Oracle | aia-office | Bot Developer | iPlan, FA Tools, LINE webhook |
-| iAgencyAIA | iagencyaia | iAgencyAIA-Oracle | aia-office | Insurance Portal | AIA web portal, insurance ops |
+| FaSai (ฟ้าใส) | iagencyaia | iAgencyAIA-Oracle | aia-office | Insurance Portal Ops | iAgencyAIA web portal, insurance ops, API testing |
 | Wingman | wingman | Wingman-Oracle | aia-office | News & Social | Daily news pipeline, social posting |
 | Recruiter | recruiter | Recruiter-Oracle | aia-office | FA Recruitment | FA recruitment quiz, onboarding |
 | Creator | creator | Creator-Oracle | academy | Academy Lead | Curriculum, starter templates, mentoring |
@@ -63,6 +63,7 @@ Researcher → Writer (research)
 BotDev → QA → report
 Admin → QA → report
 AIA ↔ BotDev (portal ops)
+FaSai ↔ BotDev (FA Tools, API testing)
 Wingman → Designer → Discord (news pipeline)
 Any oracle → BoB (escalation)
 BoB → แบงค์ (decisions, approvals)
