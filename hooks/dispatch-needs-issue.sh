@@ -13,6 +13,13 @@ CMD=$(echo "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null)
 # Only check dispatch commands (maw hey / talk-to)
 echo "$CMD" | grep -qE '(maw hey|/talk-to|talk-to) ' || exit 0
 
+# Only BoB needs issue check — other oracles communicate freely (peer-to-peer)
+ORACLE_LOWER=$(echo "${ORACLE_NAME:-}" | tr '[:upper:]' '[:lower:]')
+case "$ORACLE_LOWER" in
+  bob|bob-oracle) ;; # BoB must have issues
+  *) exit 0 ;; # All other oracles can communicate directly
+esac
+
 # Extract message content (after oracle name)
 MSG=$(echo "$CMD" | sed 's|.*maw hey [^ ]* ||; s|.*talk-to [^ ]* ||' | tr -d "\"'" | head -c 500)
 

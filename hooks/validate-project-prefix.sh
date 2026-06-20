@@ -13,6 +13,13 @@ CMD=$(echo "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null)
 # Only check maw hey commands
 echo "$CMD" | grep -qE 'maw hey ' || exit 0
 
+# Only BoB needs prefix check — other oracles communicate freely (peer-to-peer)
+ORACLE_LOWER=$(echo "${ORACLE_NAME:-}" | tr '[:upper:]' '[:lower:]')
+case "$ORACLE_LOWER" in
+  bob|bob-oracle) ;; # BoB must use prefixes
+  *) exit 0 ;; # All other oracles can maw hey without prefix
+esac
+
 # Extract message content
 MSG=$(echo "$CMD" | sed 's|.*maw hey [^ ]* ||' | tr -d "\"'" | head -c 500)
 [ -z "$MSG" ] && exit 0
@@ -55,7 +62,7 @@ fi
 
 if [ -n "$PROJECTS" ] && ! echo "$PROJECTS" | grep -qxF "$PREFIX"; then
   case "$PREFIX" in
-    bob|pulse|dev|qa|hr|admin|designer|writer|researcher|security|editor|doccon|creator|fe|pa|fa|aia|data|botdev|cost) ;; # oracle names OK
+    bob|pulse|dev|qa|hr|admin|designer|writer|researcher|security|editor|doccon|creator|fe|pa|fa|aia|data|botdev|cost|fasai|iagencyaia) ;; # oracle names OK
     proxy|poster|browser|office) ;; # known aliases
     *) echo "{\"error\":\"🚫 BLOCKED: project [$PREFIX] ไม่มีใน maw project ls.\n\nsร้างก่อน: maw project create $PREFIX \\\"<name>\\\" \\\"<desc>\\\"\"}"
        exit 2 ;;
