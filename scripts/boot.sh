@@ -36,6 +36,15 @@ else
   pm2 resurrect 2>/dev/null || pm2 start ~/repos/github.com/BankCurfew/maw-js/ecosystem.config.cjs
   pm2 save 2>/dev/null
   echo "$(date) | PM2 started + saved" >> "$LOG"
+  # Auto health check after PM2 resurrect (Phase 2A)
+  sleep 15
+  echo "$(date) | Running post-resurrect health check..." >> "$LOG"
+  bash ~/test-boot.sh >> "$LOG" 2>&1
+  HEALTH_FAIL=$(grep -c "❌ FAIL" "$LOG" 2>/dev/null | tail -1)
+  if [ "$HEALTH_FAIL" -gt 0 ]; then
+    echo "$(date) | BoB-Oracle | $(hostname) | Notification | BoB-Oracle | maw-hey » needs your attention — $HEALTH_FAIL health checks FAILED after PM2 resurrect" >> ~/.oracle/feed.log
+  fi
+  echo "$(date) | Health check complete" >> "$LOG"
 fi
 
 # 2.5 Start Cloudflare tunnel
