@@ -388,14 +388,28 @@ echo "$(date '+%Y-%m-%d %H:%M:%S') | <Oracle> | $(hostname) | Notification | <Or
 | feed.log | `~/.oracle/feed.log` | All oracle activity log |
 | OneDrive | `/mnt/c/Users/*/OneDrive/` | File delivery |
 
-### Hooks (28 active)
+### Hooks (31 active)
 
-Hooks enforce rules automatically via PreToolUse/PostToolUse:
+Hooks enforce rules automatically via PreToolUse/PostToolUse. 8 blocking, 22 warning/auto, 1 disabled.
+
+**Blocking hooks** (prevent action until fixed):
 - `validate-project-prefix.sh` — BLOCK messages without `[project] #ticket`
 - `bob-must-cc-pulse.sh` — BLOCK BoB dispatch without cc'ing Pulse
-- `bob-monitor-needs-loop.sh` — BLOCK "monitoring" without `maw loop`
 - `pulse-ticket-check.sh` — BLOCK task dispatch without ticket
-- And 24 more in `~/.oracle/hooks/`
+- `dispatch-needs-issue.sh` — BLOCK dispatch without GitHub issue
+- `safety-guardian.sh` — BLOCK dangerous commands (rm -rf, force push)
+- `subagent-comm-block.sh` — BLOCK subagents as messengers
+- `playwright-limiter.sh` — BLOCK if 2 Playwright sessions active
+- `enforce-maw-loop.sh` — BLOCK manual scheduling (must use maw loop)
+
+**Auto-action hooks** (do things automatically):
+- `auto-cc-bob.sh` — Auto-cc BoB on inter-oracle comms
+- `auto-cross-notify.sh` — Auto-notify referenced oracles
+- `pulse-auto-cc.sh` — Auto-forward task events to Pulse
+- `feed-activity.sh` — Write activity to feed.log for dashboard
+- `doc-change-check.sh` — Warn when project docs are stale after code changes
+
+**Full reference**: `oracle-fleet-guide/docs/hooks-reference.md` (31 hooks, detailed)
 
 ---
 
@@ -430,7 +444,37 @@ Phase 5: ENFORCE — catch local-only work, reopen until pushed
 
 ---
 
-## 13. KEY PRINCIPLES
+## 13. DOC ENFORCEMENT — CODE CHANGES MUST UPDATE DOCS
+
+Every code change that affects API, logic, architecture, or business rules MUST update the project doc at `oracle-fleet-guide/docs/projects/<slug>.md`.
+
+### Enforcement
+
+| Layer | How |
+|-------|-----|
+| Hook | `doc-change-check.sh` — warns on stale docs (>7 days) after commits |
+| DocCon | Weekly audit — which projects had commits but no doc updates? |
+| BoB | Checks doc update when closing tasks with code changes |
+
+### Violations
+
+| Offense | Action |
+|---------|--------|
+| 1st | DocCon reminder |
+| 2nd | BoB follow-up ticket |
+| 3rd | HR performance note |
+
+### Doc Owners
+
+Each project has a primary doc owner (the lead oracle) and a backup. See `DOC-ENFORCEMENT-POLICY.md` for the full ownership table.
+
+**Rule: If the code changed but the doc didn't, the doc is now a lie.**
+
+Full policy: `~/.oracle/docs/DOC-ENFORCEMENT-POLICY.md`
+
+---
+
+## 14. KEY PRINCIPLES
 
 1. **Nothing is Deleted** — Append-only, timestamps are truth
 2. **Patterns Over Intentions** — Observe what happens, not what was promised
