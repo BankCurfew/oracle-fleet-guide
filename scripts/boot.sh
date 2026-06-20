@@ -78,9 +78,9 @@ for i in $(seq 1 30); do
 done
 echo "$(date) | maw server ready" >> "$LOG"
 
-# 4. Set tmux default size (prevent 24x80 pane bug — lesson #15)
-tmux set-option -g default-size 200x200 2>/dev/null
-echo "$(date) | tmux default-size set 200x200" >> "$LOG"
+# 4. Set tmux default size (200 wide, 50 tall — prevents 24x80 bug AND blank space after /clear)
+tmux set-option -g default-size 200x50 2>/dev/null
+echo "$(date) | tmux default-size set 200x50" >> "$LOG"
 
 # 5. Wake FULL fleet (not just Echo)
 RUNNING=$(tmux list-sessions 2>/dev/null | grep -c "^[0-9]")
@@ -93,13 +93,13 @@ else
   echo "$(date) | Fleet woken" >> "$LOG"
 fi
 
-# 6. Resize all tmux windows (ensure 200x200 — lesson #15)
+# 6. Resize all tmux windows (200x50 — wide enough, no blank space after /clear)
 echo "$(date) | Resizing tmux windows..." >> "$LOG"
 sleep 10
 for session in $(tmux list-sessions -F "#{session_name}" 2>/dev/null); do
-  tmux resize-window -t "$session" -x 200 -y 200 2>/dev/null
+  tmux resize-window -t "$session" -x 200 -y 50 2>/dev/null
 done
-echo "$(date) | All windows resized to 200x200" >> "$LOG"
+echo "$(date) | All windows resized to 200x50" >> "$LOG"
 
 # 7. Send /recap --all to all oracle sessions (deep learn on boot)
 echo "$(date) | Sending /recap --all to fleet..." >> "$LOG"
