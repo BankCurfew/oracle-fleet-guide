@@ -338,6 +338,39 @@ done
 
 **Mitigation**: Discipline over tooling — follow Law #6 regardless of whether the hook catches it.
 
+### 23. Project Sync — maw project + GitHub issue + repo + prefix must ALL match
+
+**Problem**: Work scattered across systems — orphan projects (3), orphan issues (12), tasks without GH issues, wrong refs. 54% compliance initially.
+
+**Rule (แบงค์ mandate 2026-06-20)**: Every work item must exist in ALL systems:
+1. `maw project` — task tracked
+2. GitHub issue — code work documented (Law 5)
+3. GitHub repo — correct repo linked
+4. `[project] #ticket` prefix — on every message/commit/dispatch
+
+**Enforcement**:
+- Hook: `validate-project-prefix.sh` (warns on missing prefix, 26 oracles)
+- Hook: `dispatch-needs-issue.sh` (blocks dispatch without GH issue)
+- Conduct: DocCon General Conduct v1.2 Rule 15
+- Audit: Pulse periodic matrix check (project↔issue↔repo)
+
+**Migration note**: When moving to new machine, verify:
+- All hooks deployed to every oracle's `.claude/settings.json`
+- `maw project ls` shows all active projects
+- All GH issues accessible (`gh auth status`)
+- DocCon conduct files committed to git (not local-only)
+
+### 24. Message Prefix Standard — [project] #ticket on EVERYTHING
+
+**Format**: `cc: [project-slug] #issue — message`
+
+**16 active project slugs** (from `maw project ls`):
+maw-js, echo-federation, curfew-migration, fa-tools, fa-quiz, daily-news, oracle-infra, aia-ops, security-compliance, content-writing, seo-backlinks, ijourney-ads, content-creation, lordms, cost-ops, customer-data-sync
+
+**Special**: `[office]` for fleet-wide announcements without specific ticket.
+
+**Migration note**: Project slugs live in maw-js config, not per-machine. Will carry over with git clone.
+
 ## Checklist: Things to Commit BEFORE Next Migration
 
 - [x] Pulse CLI source code (fixed — was .gitignored, now committed)
