@@ -94,9 +94,12 @@ Curfew-Maw-js/
 │   ├── paths.ts, routing.ts        # Path resolution + target routing
 │   ├── auth.ts                     # Session auth + QR login
 │   ├── oracle-health.ts            # Oracle session health monitoring
+│   ├── supervisor.ts               # BobSupervisor — task tracking, stall detection, auto-nudge, completion chaining
+│   ├── autopilot.ts                # ORACLE_MAP (27 oracles), ROUTING_RULES (20 keyword sets), RESULT_CHAINS, board automation
 │   ├── audit.ts, maw-log.ts        # Audit logging
 │   ├── snapshot.ts                 # Fleet state snapshots
 │   ├── anti-patterns.ts            # Health checks (Zombie/Island detection)
+│   ├── pty.ts                      # PTY transport — grouped sessions, row-reflow, orphan sweep
 │   └── plugins.ts, hooks.ts        # Extension + hook system
 │
 ├── fleet/                          # Session configs
@@ -429,17 +432,32 @@ pm2 restart maw
 **Status**: Production — federation + bud system stable, loop engine running
 **Files**: 142 TypeScript source files, 50+ CLI commands
 
-### Recent Commits
+### Recent Commits (2026-06-19/20)
 ```
-dab536f  refactor: rename iAgencyAIA display to FaSai in fleet config
-dced399  docs: new-node-setup — spoke-node onboarding guide
-dd23c60  fix: agent→node fallback for bare-name federation routing
-685c33a  feat: dynamic office title from config.officeTitle
-e0ee189  feat: federated agent status polling — live busy/ready/idle
-cfd6e8e  fix: sender identity uses tmux window name when unset
-bd33e54  feat: federation messages include sender identity
-a36a610  security: /api/config only exposes local agents
+feat(office): #151 stall detection + routing 7→27 + firecrawl fallback + editor review
+feat(office): #150 supervisor audit, routing 7→27, doc gate on close
+feat(office): #140 add fasai alias for iAgencyAIA-Oracle
+feat(oracle-infra): #137 migrate-fleet.sh + backup-fleet.sh + session fixes
+chore: update hooks config — curfew migration post-migration day 1
 ```
+
+### Key Architecture Changes (2026-06-19/20)
+
+| Change | Files | What |
+|--------|-------|------|
+| **ORACLE_MAP 7→27** | autopilot.ts | All 27 oracles mapped with keyword routing (20 rules) |
+| **Stall detection** | supervisor.ts | 2hr auto-nudge on HIGH priority tasks, 30min cooldown |
+| **PTY row-reflow** | pty.ts | Upstream #2409 port — rows match client viewport, width pinned 200 |
+| **Orphan-PTY sweep** | pty.ts + server.ts | Upstream #2414 port — kills leaked maw-pty-* sessions every 5min |
+| **tmux 200x200** | fleet.ts, tmux.conf, boot.sh | Prevents 24x80 default pane bug — Claude redraws enough rows for capture |
+| **Capture 1000 lines** | engine.ts | Increased from 80→300→1000 for scrollback depth |
+| **Terminal auto-scroll pause** | OracleSheet, MiniMonitor, MiniPreview, iPadDashboard | Detects user scroll-up, pauses auto-scroll |
+| **Startup noise filter** | ansi.ts processCapture | Filters direnv/CLAUDECODE/claude --resume from terminal display |
+| **SPA fallback routes** | server.ts | /office, /dashboard, /terminal all serve React app |
+| **Orbital + Fame removed** | App.tsx, StatusBar.tsx | Nav reduced 12→10 items |
+| **fasai alias** | find-window.ts, sovereign.ts | fasai→iagencyaia resolution |
+| **Migration scripts** | scripts/ | backup-fleet.sh + migrate-fleet.sh (8-phase idempotent) |
+| **28+ hooks fleet-wide** | ~/.oracle/hooks/ | validate-project-prefix, enforce-maw-hey, enforce-maw-loop, dispatch-needs-issue, etc. |
 
 ### Known Limitations
 - Loop engine checks every 30 seconds (not sub-second precision)
