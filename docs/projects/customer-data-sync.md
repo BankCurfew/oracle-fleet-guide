@@ -78,7 +78,8 @@ Data-Oracle/
 │   ├── ingest-iagencyaia-kb.py            # iAgencyAIA KB (5.0K)
 │   │
 │   ├── customer-data-sync.py     # ePOS → iAgency DB sync (9.9K)
-│   ├── import-epos-customers.py  # ePOS customer+policy import (15.7K)
+│   ├── import-epos-customers.py  # ePOS customer+policy bulk import (15.7K)
+│   ├── ingest-investment-funds.py # UL fund data ingestion (6.5K)
 │   ├── build-iagencyaia-chunks.py # Website → KB chunks (46.5K)
 │   │
 │   ├── dedup-kb-chunks.py        # Deduplicate KB entries
@@ -202,7 +203,39 @@ Generate match report → manual review for uncertain matches
 
 **Script**: `scripts/import-epos-customers.py` (234 lines) — bulk import with idempotent `policy_number` key
 
-### Pipeline 4: Promo Lifecycle
+**Filters** (added 2026-06-20, bug #126):
+- `is_policy_importable()` filters out: rejected, lapsed, surrendered, freelook-cancelled, zero-premium/zero-SA
+- Skips customers where ALL policies are non-active
+- Result: 1,382 raw → 937 importable customers, 2,044 → 1,243 active policies
+- CG* (group insurance) records: 50 exist in DB from iAgency app, not from ePOS import
+
+### Pipeline 5: Investment Fund Ingestion
+
+**Script**: `scripts/ingest-investment-funds.py` (180 lines)
+
+```
+AIA ePOS Investment Tab (Playwright scrape by AIA-Oracle)
+  ↓
+JSON file: AIA-Oracle/.tmp/investment-ALL.json
+  ↓
+Parse: Thai Buddhist Era dates (year - 543), comma numbers, NBSP percentages
+  ↓
+Populate customer_policies (FK parent, UL policies only)
+  ↓
+Insert policy_investments (fund allocations, snapshot model)
+  ↓
+Verify: 0 NULLs, 0 orphans, 0 dupes
+```
+
+**Schema**: `policy_investments` table (16 columns) — policy_no, fund_name, fund_code, risk_level, units, nav_per_unit, nav_date, avg_cost_per_unit, cost_value, current_value, gain_loss, gain_loss_pct, allocation_pct, scraped_at
+
+**FK**: `policy_investments.policy_no → customer_policies.policy_no`
+
+**Current state** (2026-06-20): 243 UL policies, 603 fund rows, NAV dates 2026-06-16/17
+
+**Snapshot model**: Each scrape creates new rows with `scraped_at` timestamp. Upsert key planned: `policy_no + fund_code + nav_date` (pending UNIQUE index migration).
+
+### Pipeline 6: Promo Lifecycle
 
 **Storage**: `data/aia-promotions-2026.json` (41.5K, 33 active promos)
 
@@ -229,7 +262,7 @@ Generate match report → manual review for uncertain matches
 
 **CRITICAL**: `premium_per_1000` = NULL for health/CI products. Using wrong column = #1 lookup mistake.
 
-**Source table**: `insurance_products` in FA Tools project (hztjrqlxrdsmxbkxojqg), 14,596 rows (product × age × gender).
+**Source table**: `insurance_products` in FA Tools project (hztjrqlxrdsmxbkxojqg), 14,728 rows (product × age × gender), 26 product families.
 
 ## Database Schema
 
@@ -270,7 +303,7 @@ Generate match report → manual review for uncertain matches
 | `min_age`, `max_age` | int4 | Age range |
 | `min_sa`, `max_sa` | numeric | Sum assured range |
 
-**Size**: 14,596 rows. Each row = product × age × gender.
+**Size**: 14,728 rows. Each row = product × age × gender. 26 product families.
 
 ### Table: `aia_knowledge` (heciyiepgxqtbphepalf)
 
@@ -282,6 +315,45 @@ Generate match report → manual review for uncertain matches
 | `category` | text | Article category |
 | `source_url` | text | Original URL |
 | `embedding` | vector(1024) | BGE-M3 dense embedding |
+
+### Table: `customer_policies` (hztjrqlxrdsmxbkxojqg)
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | uuid | Primary key |
+| `policy_no` | text | Policy number (FK parent for policy_investments) |
+| `customer_name` | text | Thai full name with title |
+| `product_code` | text | ePOS plan code (e.g. NILPP5) |
+| `product_type` | text | Product category (all "Unit Linked") |
+| `sum_assured` | numeric | Sum assured |
+| `annual_premium` | numeric | Annual premium |
+| `payment_mode` | text | Payment frequency (Thai: รายปี, รายเดือน) |
+| `status` | text | Policy status |
+| `agent_code` | text | AIA agent code |
+
+**Size**: 243 rows (UL policies only). FK parent for `policy_investments`.
+
+### Table: `policy_investments` (hztjrqlxrdsmxbkxojqg)
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | uuid | Primary key |
+| `policy_no` | text | FK → customer_policies.policy_no |
+| `fund_name` | text | Thai fund name |
+| `fund_code` | text | Fund identifier (truncated name, no short code from ePOS) |
+| `risk_level` | text | Risk level ('4', '5', '6') |
+| `units` | numeric | Number of units held |
+| `nav_per_unit` | numeric | NAV per unit |
+| `nav_date` | date | NAV valuation date |
+| `avg_cost_per_unit` | numeric | Average cost basis |
+| `cost_value` | numeric | Total cost |
+| `current_value` | numeric | Current redemption value |
+| `gain_loss` | numeric | Unrealized PnL (baht) |
+| `gain_loss_pct` | numeric | Unrealized PnL (%) |
+| `allocation_pct` | numeric | Fund allocation % |
+| `scraped_at` | timestamptz | Scrape timestamp |
+
+**Size**: 603 rows. Snapshot model — new rows per scrape with `scraped_at`.
 
 ### RPC: `kb_bot_search()`
 
@@ -378,10 +450,11 @@ Via `maw loop add` (persistent, dashboard-visible):
 ## Current State
 
 ### What's Working
-- KB pipeline: 10,000+ chunks ingested, embedded, searchable
-- Premium lookup: 14,596 product rows serving FA Tools + iAgencyAIA bot
-- Customer data sync: 1,382 customers + 2,044 policies imported from ePOS
-- Promo tracking: 33 active promos with lifecycle management
+- KB pipeline: 10,732 chunks ingested, 100% embedded, searchable
+- Premium lookup: 14,728 product rows (26 families) serving FA Tools + iAgencyAIA bot
+- Customer data sync: 937 active customers (filtered from 1,382 raw) ready for import
+- Investment fund data: 243 UL policies, 603 fund allocations in Supabase (QA verified)
+- Promo tracking: 23 active promos with lifecycle management
 - BGE-M3 embedding: batch pipeline stable with NaN validation
 - Cross-oracle data serving: P0 responses to iAgencyAIA operational
 
@@ -392,11 +465,15 @@ Via `maw loop add` (persistent, dashboard-visible):
 - **Promo expiry window**: 8 promos expire Jun 30 — 7-day alert due Jun 23
 - **Embedding service**: Ollama/BGE-M3 local availability intermittent after HQ migration
 
-### Recent Work (2026-06-18/20)
-- Customer Data Sync ETL improvements + premium lookup docs
-- ePOS import script (bulk customer+policy import)
-- Data contract documentation for iAgencyAIA premium self-serve
-- Post-migration audit: verified all scripts work on curfew server
+### Recent Work (2026-06-18 to 2026-06-21)
+- Customer Data Sync ETL: bulk import script + plan code decoder (pay_term/coverage_term)
+- Investment fund ingestion: 603 fund rows from ePOS, Thai date/number parsing
+- QA fixes: duplicate cleanup (7 records), updated_at on PATCH, CG/inactive filter (#126)
+- Premium lookup: rider_premium vs premium_per_1000 documented, self-serve guide for ฟ้าใส
+- Data contract: formal request/response spec for iAgencyAIA premium queries
+- KB: 9 recruitment journey + bot persona chunks added (source=recruitment-bot-personas)
+- Bug fix: display mapping (plan_code decode → pay_term/coverage_term), coordinated with BotDev
+- SOP updates: MAW HEY ALWAYS rule, oracle name mapping (aia vs iagencyaia)
 
 ### Critical Incidents
 - **2026-05-12**: 42K duplicate rows from skipped DELETE-before-INSERT → mandatory 5-step procedure enacted
