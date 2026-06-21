@@ -71,7 +71,7 @@ iagencyaiafatools/
 │   ├── pages/                      # 17 route-level components
 │   │   ├── Dashboard.tsx           # Main hub (7 modes)
 │   │   ├── Admin.tsx               # Admin console (20+ tabs)
-│   │   ├── Profile.tsx             # FA profile, business cards, calendar
+│   │   ├── Profile.tsx             # FA profile (3 tabs: Overview, Customers, Tools), settings modal
 │   │   ├── SharedProposal.tsx      # Public shared views (1,650 LOC)
 │   │   ├── AnalyzePolicy.tsx       # Portfolio management + gap analysis
 │   │   └── ApplicationForm.tsx     # 6-step application form
@@ -85,7 +85,7 @@ iagencyaiafatools/
 │   │   ├── export/                 # PDF/image/Excel export (9 files)
 │   │   ├── portfolio/              # Portfolio management (14 files)
 │   │   ├── leads/                  # Lead management (7 files)
-│   │   ├── profile/                # FA profile (9 files)
+│   │   ├── profile/                # FA profile (14 files — ProfileHeader, OverviewTab, SettingsModal, QuickAddPolicyModal, ProposalCard, ProposalListItem)
 │   │   ├── financial-health/       # FHC scoring
 │   │   └── ui/                     # shadcn/ui primitives (82 files)
 │   │
@@ -377,13 +377,16 @@ Flow: Push to main → auto-deploy to BOTH CF Pages projects.
 - i18n (TH/EN) at 100% DB column coverage
 - AES-GCM encryption on 40+ sensitive fields
 - RLS on all tables
+- Lead pipeline with emoji status badges and one-tap status change
+- 63 Vitest unit tests for profile components
+- Duplicate lead detection (phone auto-match)
 
 ### Known Issues / Technical Debt
 
 | Issue | Severity | Detail |
 |-------|----------|--------|
 | TypeScript `strict: false` | Medium | No strict null checks, no implicit any checks |
-| Zero test files | High | No Vitest/Jest setup |
+| LeadPoliciesManager 4,088 LOC | Medium | Needs decomposition — quick-add modal extracted but full manager still monolithic |
 | Rate limits only on `submit-lead` | Medium | Other edge functions unprotected |
 | 20+ `any` usages | Low | Should be typed interfaces |
 | Component bloat | Low | CompareMode.tsx (74KB), SharedProposal.tsx (1,650 LOC) |
@@ -398,6 +401,13 @@ Flow: Push to main → auto-deploy to BOTH CF Pages projects.
 
 | Hash | Description |
 |------|-------------|
+| (latest) | fix(icompare): CI Pro Care / CI Super Care duplicate benefits when main contract |
+| (latest) | feat(policy): #154 main+rider bundle QuickAddPolicyModal |
+| (latest) | feat(leads): smart duplicate detection + one-tap status change |
+| (latest) | feat(profile): #153 Designer wireframe — 5→3 tabs + header + settings modal |
+| (latest) | fix(profile): #153 fix 15/16 QA issues — soft-delete, stats, i18n, DRY |
+| (latest) | data: Saving Sure full rate table — 102 rows from Benefit Plus manual |
+| (latest) | test(profile): 63 unit tests — proposal-types, useBirthdayAnniversary, formatCompact |
 | `ce3e95a2` | fix(api): BUG9 regression — hospital tier mapping accepts aliases |
 | `2790baef` | fix(api): BUG13 — /fhc/create and /fhc/submit build full plan_data |
 | `baa544fe` | fix: /fhc/submit creates fhc_results + fhc_plans |
@@ -413,6 +423,7 @@ Flow: Push to main → auto-deploy to BOTH CF Pages projects.
 
 | Date | What Changed | By |
 |------|-------------|-----|
+| 2026-06-21 | Profile overhaul (#153): 5→3 tabs, ProfileHeader, SettingsModal, OverviewTab, 833 LOC dead code removed. Policy UX (#154): QuickAddPolicyModal with inline riders, family badges, duplicate detection. Lead pipeline: emoji status labels, one-tap change. iCompare: CI duplicate fix. Saving Sure: 102-row rate table. 63 unit tests added. | BotDev |
 | 2026-06-21 | Added FHC API section (POST /fhc/create, /fhc/submit, GET /fhc/:token), iCheck route, product matching v3 (5 pillars), hospital tier aliases, Benefit Plus discount, proposals/create plan_data build, refresh endpoint | DocCon (Guardian check) |
 | 2026-06-20 | Initial doc created (#143) | DocCon |
 
@@ -437,6 +448,6 @@ Flow: Push to main → auto-deploy to BOTH CF Pages projects.
 | Database Tables | 67+ |
 | Migrations | 221 |
 | Utility Modules | 43 |
-| Insurance Products | 117 |
-| Premium Records | 14,000+ |
+| Insurance Products | 118 |
+| Premium Records | 14,100+ |
 | Estimated LOC | ~120,000 |
