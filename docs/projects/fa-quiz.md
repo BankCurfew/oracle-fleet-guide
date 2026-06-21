@@ -59,12 +59,18 @@ fa-recruitment-quiz/
 │   │   ├── ResultScreenV6.tsx      # Result display + radar chart
 │   │   ├── SharedResultPage.tsx    # Share link result viewer
 │   │   ├── RadarChart.tsx          # Recharts radar visualization
-│   │   ├── WikiPageV6.tsx          # Career archetype encyclopedia
+│   │   ├── PathWikiCards.tsx        # Career archetype encyclopedia
 │   │   ├── PhoneModal.tsx          # Phone collection gate
 │   │   ├── InfoFormGate.tsx        # Name/date/consent form
 │   │   ├── GateScreens.tsx         # Disqualification/exit pages
 │   │   ├── personalization.ts      # Geolocation, device detection
-│   │   └── share-utils.ts          # Share token generation
+│   │   ├── share-utils.ts          # Share token generation
+│   │   ├── EpilogueView.tsx       # Story epilogue after result
+│   │   ├── CharacterSheet.tsx     # Detailed character profile view
+│   │   ├── SceneParticles.tsx     # Ambient particle effects per scene
+│   │   ├── RankingView.tsx        # Leaderboard / ranking display
+│   │   ├── RecruitCTA.tsx         # Recruitment call-to-action page
+│   │   └── TarotCard.tsx          # Animated tarot card component
 │   │
 │   ├── engine/                     # Core quiz logic
 │   │   ├── scoring-v6.ts           # Scoring pipeline (264 lines)
@@ -78,7 +84,11 @@ fa-recruitment-quiz/
 │   │   ├── liff.ts                 # LINE LIFF SDK wrapper
 │   │   ├── phone.ts                # Phone normalization
 │   │   ├── preload.ts              # Asset preloading
-│   │   └── adapter-v6.ts           # v6 adapter utilities
+│   │   ├── adapter-v6.ts           # v6 adapter utilities
+│   │   ├── action-logger.ts        # User action logging to quiz_events
+│   │   ├── questions-sq.ts         # Supplementary question bank
+│   │   ├── scoring-v6.test.ts      # Scoring unit tests (Vitest)
+│   │   └── tracking.test.ts        # Tracking unit tests (Vitest)
 │   │
 │   ├── admin/                      # Admin dashboard
 │   │   ├── AdminApp.tsx            # Router
@@ -371,14 +381,48 @@ VITE_LIFF_ID=your-liff-id
 - Database tracking failed for 18 days (May 7-25) due to missing columns — fixed by migration 20260525
 - Desktop date input replaced with Thai 3-dropdown picker (accessibility fix)
 - Subject encoding in Gmail shows mojibake (UTF-8 display issue, not code bug)
+- No CLAUDE.md in repo — needs creation for oracle onboarding
+- Legacy v5 code still in repo (`questions.ts` 157K, `scoring.ts` 125K, `QuizApp.tsx` 36K) — dead weight but not breaking
 
-### Recent Work (v6.0, 50 commits)
+### TypeScript Status
 
-- `730fc7b` — feat: user action logging — table, logger util, admin page (#82)
-- `237add0` — fix: show incomplete quiz sessions + update wiki to V6 (#79)
+As of 2026-06-21: **0 errors** (`npx tsc --noEmit` passes clean). Earlier audit flagged 11 errors in ProspectDetail/QuizApp/tracking.test/AdminWiki but these appear resolved or were false positives from a different tsconfig.
+
+### Recent Commits (latest 10)
+
+- `5a3c3e1` — feat: user action logging — table, logger util, admin page (#82)
+- `8505e5c` — fix: show incomplete sessions + update wiki to V6 (#79)
+- `66db7c7` — fix: desktop calendar — Thai dropdown selectors replace tiny popup
+- `9ca1c39` — fix: update OG URL from quiz.vuttipipat.com to journey.iagencyaia.com
+- `2e689c1` — fix: soften OG description + prologue text — แบงค์ direct feedback
+- `d36483b` — fix: LINE message shows 'text=' prefix + make message professional
+- `6a90fff` — fix: TOTAL_QUESTIONS comment 26→24 (actual count)
 - `6c249f5` — feat(#66): add MW1+MW2 market wealth questions
-- `69ab6b6` — feat(#65): decouple card from work mode — personality-based assignment
-- `e0bee87` — feat(#65): per-card dimension gates — research-backed
+- `47c93d3` — fix: z-index on all result content — overlay no longer paints over forms
+- `31f8373` — fix: solid background ALL steps + remove skip button (แบงค์)
+
+## Codebase Stats
+
+| Metric | Value |
+|--------|-------|
+| Components | 20+ (quiz + admin) |
+| Engine files | 18 (v6 + legacy) |
+| Admin pages | 7 |
+| Questions | 24 (8 chapters) |
+| Career archetypes | 9 |
+| Scene backgrounds | 70+ (webp) |
+| Supabase tables | 7 |
+| Migrations | 8 |
+| Unit tests | 2 files (scoring-v6, tracking) |
+| Estimated LOC | ~25,000 |
+| Legacy dead code | ~282K (questions.ts + scoring.ts) |
+
+## Changelog
+
+| Date | What Changed | By |
+|------|-------------|-----|
+| 2026-06-21 | Doc updated: added missing components (EpilogueView, CharacterSheet, SceneParticles, RankingView, RecruitCTA, TarotCard), engine files (action-logger, questions-sq, tests), fixed WikiPageV6→PathWikiCards, updated commits, confirmed 0 TS errors, noted legacy dead code | BotDev |
+| 2026-06-18 | Initial doc created | DocCon |
 
 ## Owner & Contacts
 
