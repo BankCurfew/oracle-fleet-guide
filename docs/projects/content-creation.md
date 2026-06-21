@@ -128,36 +128,31 @@ Designer-Oracle/
 **Full workflow** (from `docs/SOP.md`):
 
 ```
-Brief received (title, subtitle, theme, data)
+Brief received (from Wingman-Oracle/ψ/writing/<series>-YYYYMMDD.md)
   ↓
-Step 1: Hero Image Generation
-  - Priority: ChatGPT Brand Chat → Gemini 2.5-Flash → ComfyUI
-  - Rules: unique daily (no reuse), no text baked into image,
-    real photos for people/events, AI for concepts, min 16:9 aspect
+Step 1: Full Poster Image via ChatGPT Brand Chat (DALL-E)
+  - Tab: "iAgencyAIA Brand Visuals" — find by title, NOT hardcoded ID
+  - Use pre-built prompt template from output/poster-templates/<series>.txt
+  - Fill [PLACEHOLDER] fields with brief data
+  - Send via MQTT proxy (chatgpt_chat action)
+  - Poll chatgpt_get_images every 60s (DALL-E takes 1-3 min)
+  - Track image count before/after to detect new images
+  - Download by specific imageIndex (NOT latest:true — broken)
+  - Rules: --keep always, NEVER --new (brand context preserved)
   ↓
-Step 2: HTML Template Construction
-  - Structure: geo accents → badge + logo → hero box → text area → footer
-  - 4 separate HTML files (one per output size)
-  - All text as HTML overlay (never in hero image)
+Step 2: Verify downloaded image
+  - Check correct poster (not old cached image)
+  - Verify badge, logo, headline, data cards visible
+  - If DALL-E refused (content policy) — rephrase with neutral wording
   ↓
-Step 3: Playwright Rendering (4 sizes)
-  - FB:    1200 × 630   (headline y:430, font 56px)
-  - IG:    1080 × 1350  (headline y:940, font 48px)
-  - Story: 1080 × 1920  (headline y:1050, font 72px)
-  - Square: 1080 × 1080 (headline y:750, font 56px)
-  - waitForTimeout(1500) for font loading
+Step 3: Deliver 1 Story IG (1080×1920) to Wingman
+  - Default: 1 size only (แบงค์ directive 2026-06-19)
+  - Multiple sizes only when explicitly requested
   ↓
-Step 4: Self-Check 7/7 (ALL must pass)
-  1. Hero image exists (real photo or AI-gen, not gradient)
-  2. No tables (use visual elements, not spreadsheets)
-  3. Text spacing OK (no overlaps)
-  4. Logo correct (red-black-red + white stroke)
-  5. Source valid (verify attribution exists)
-  6. 4 sizes complete (FB, IG, Story, Square)
-  7. Mobile view readable (50% zoom test)
-  ↓
-Step 5: Deliver to Wingman-Oracle → QA → Discord post
+Step 4: cc Wingman + cc BoB (structured format)
 ```
+
+**Legacy pipeline** (HTML template → Playwright render → 4 sizes) still available in `ψ/writing/posters/gen-*.py` scripts for cases where DALL-E fails or custom layouts are needed.
 
 ### 2. Rendering Pipeline (Playwright)
 
@@ -372,20 +367,27 @@ No dedicated API server. Designer-Oracle operates through:
 - Pigment v8 design system with 165 tokens (v2.4.0 CSS framework)
 - 7-point self-check before delivery
 - 300+ poster sets generated (1200+ individual PNGs)
-- 5 active series: ATW, Market Brief, Fund, Viral, Health & Wealth
+- 7 active series: ATW, Market Brief, Fund Holdings, Fund Insights, Viral, Health & Wealth, Breaking
+- 8 pre-built prompt templates for Wingman self-service (`output/poster-templates/`)
+- Default output: 1 Story IG (1080×1920) per poster (แบงค์ directive 2026-06-19)
 
 ### Known Issues
 
-- ComfyUI availability depends on Windows-side GPU (not always accessible from WSL)
-- 4.1GB repo size (heavy with rendered PNGs) — may need LFS or archival strategy
-- Gemini proxy occasionally fails (MQTT timing issues) — ChatGPT Brand Chat preferred
+- **chatgpt-gen.sh `latest:true` broken** — downloads old images from long conversations. Use manual image count tracking + download by specific imageIndex instead
+- **DALL-E guardrail detection missing** — "similarity to third-party content" errors not surfaced by MQTT proxy. Dev working on fix (proxy #12). Workaround: avoid brand names (Nasdaq, CNBC) in prompts
+- **DALL-E content policy** — health/disease topics (Ebola, medical) trigger refusal. Workaround: use neutral framing (airport/policy, not disease/medical imagery)
+- **Extension goes offline** — requires manual reload at chrome://extensions/. No auto-recovery
+- **ComfyUI availability** depends on Windows-side GPU (not always accessible from WSL)
+- **4.1GB repo size** (heavy with rendered PNGs) — may need LFS or archival strategy
 
-### Recent Work
+### Recent Work (as of 2026-06-21)
 
-- `3121255` — /save: Curfew day 1 posters + bampenpien + retro
-- `b837bf2` — ATW + Fund posters 19 Jun + bampenpien practice
-- `4b4d04b` — SOP recall: ChatGPT as primary gen
-- `7391b9e` — #36 poster quality loop v7.4: QA score 88/100
+- 8 pre-built poster prompt templates created ([office] #151)
+- FA Tools Profile UX wireframe ([fa-tools] #153)
+- Daily poster production: ATW, MB, Fund Holdings, Fund Insights, Viral, H&W EP.1-2
+- Pipeline shifted from HTML template rendering to ChatGPT DALL-E direct poster generation
+- Quality loop v7.4 locked at QA score 88/100
+- MQTT polling optimized: 60s intervals (was 3s)
 
 ## Owner & Contacts
 
