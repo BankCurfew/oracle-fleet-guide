@@ -238,7 +238,7 @@ All at `https://<project>.supabase.co/functions/v1/<name>`
 
 | Function | Method | Purpose |
 |----------|--------|---------|
-| `api-gateway` | * | Unified API proxy with auth (X-API-Key or Bearer JWT) |
+| `api-gateway` | * | Unified API proxy with auth (X-API-Key or Bearer JWT). Includes server logging + admin viewer (#147) |
 | `submit-lead` | POST | Lead creation webhook. Rate limit: 10/min. Validates Thai phone, email, age 0-120. |
 | `insurance-chat` | POST | OpenAI insurance Q&A (context-aware) |
 | `encrypt-decrypt` | POST | AES-GCM 256-bit encrypt/decrypt service |
@@ -256,6 +256,30 @@ All at `https://<project>.supabase.co/functions/v1/<name>`
 | `backfill-lead-sync` | POST | Data backfill utility |
 | `migrate-proposals-to-policies` | POST | Data migration |
 
+### FHC (Financial Health Check) API — NEW (#119, #120, #142, #148)
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/fhc/create` | POST | Create FHC assessment. Builds full `plan_data` with mainContract + benefits + policyYearData. Returns share token. |
+| `/fhc/submit` | POST | Conversational FHC submission (for ฟ้าใส chat flow). Creates `fhc_results` + `fhc_plans` records. Auto-creates iPlan proposals via `/proposals/create` API (not raw INSERT). |
+| `/fhc/:token` | GET | Retrieve FHC results by share token |
+| `/proposals/create` | POST | Create proposal. Builds full `plan_data` with mainContract + benefits + policyYearData (#119). |
+| `/proposals/:token/refresh` | POST | Refresh proposal data (re-fetch premiums, recalculate). Handles age-band rider premiums. Gender normalization: DB uses Thai (ชาย/หญิง) not M/F. (#114) |
+
+**FHC Scoring V3** (#149): Gap analysis + ratios + health scoring across 5 pillars.
+
+**FHC Product Matching V3** (#119): 5-pillar matching order: Health → Life → CI → DailyComp → Savings. Each pillar capped at 100%.
+
+**Hospital Tier Alias Mapping** (#119 BUG9): Accepts aliases — `government`/`public`/`รัฐ` all map to the same tier. Mapping in api-gateway.
+
+**Benefit Plus Volume Discount** (#119): New discount type applied during proposal creation.
+
+### iCheck (FHC Share) — NEW (#146)
+
+| Route | Purpose |
+|-------|---------|
+| `/icheck/:token` | Public FHC result view — FA contact info + "ลองทำเอง" self-assessment + share link |
+
 ### Frontend Routes
 
 | Route | Component | Purpose |
@@ -267,6 +291,7 @@ All at `https://<project>.supabase.co/functions/v1/<name>`
 | `/iplan/:token` | SharedProposal | Public iPlan view |
 | `/icompare/:token` | SharedProposal | Public iCompare view |
 | `/ilink/:token` | SharedProposal | Public iLink view |
+| `/icheck/:token` | SharedProposal | Public FHC/iCheck result view (NEW) |
 | `/analyze` | AnalyzePolicy | Portfolio gap analysis |
 | `/application/:token` | ApplicationForm | 6-step form |
 
@@ -344,7 +369,7 @@ Flow: Push to main → auto-deploy to BOTH CF Pages projects.
 
 ### What's Working
 
-- All 7 modes operational (iQuick, iPlan, iCompare, iLink, Portfolio, FHC, Leads)
+- All 8 modes operational (iQuick, iPlan, iCompare, iLink, iCheck/FHC, Portfolio, Leads, Application)
 - 117 insurance products with premium data
 - Vitality + special discount engines
 - Public shared proposal links
@@ -373,13 +398,23 @@ Flow: Push to main → auto-deploy to BOTH CF Pages projects.
 
 | Hash | Description |
 |------|-------------|
-| `1b020398` | fix: FHC result_data sync + ScoreGauge arc direction |
-| `49bf67cc` | fix: vitalityStatus was hardcoded 'none' |
-| `437ea5b6` | fix: HB Extra premium + /applications 500 error |
-| `228295b7` | feat: POST /fhc/create + GET /fhc/:token API |
-| `c4c06ea5` | fix: P0 age-band rider premiums + refresh endpoint |
-| `3e95fd39` | feat: POST /proposals/:token/refresh endpoint |
-| `e1c29e1a` | feat: POST /applications endpoint + form_type enforcement |
+| `ce3e95a2` | fix(api): BUG9 regression — hospital tier mapping accepts aliases |
+| `2790baef` | fix(api): BUG13 — /fhc/create and /fhc/submit build full plan_data |
+| `baa544fe` | fix: /fhc/submit creates fhc_results + fhc_plans |
+| `a5daa33b` | fix: BUG12 pillar gauges redesigned — 5 pillars capped 100% |
+| `1f5b55c5` | feat: FHC 4 refinements from แบงค์ |
+| `d9edad77` | feat: POST /fhc/submit — conversational FHC for ฟ้าใส |
+| `8c398e9a` | feat: FHC product matching v3 — 5 pillars |
+| `dbfb2d8e` | feat: FHC Scoring V3 — gap analysis + ratios + health scoring |
+| `5435567a` | feat: API server logging + admin viewer |
+| `258c9eeb` | feat: iCheck share link — FA contact + ลองทำเอง + แชร์ |
+
+## Changelog
+
+| Date | What Changed | By |
+|------|-------------|-----|
+| 2026-06-21 | Added FHC API section (POST /fhc/create, /fhc/submit, GET /fhc/:token), iCheck route, product matching v3 (5 pillars), hospital tier aliases, Benefit Plus discount, proposals/create plan_data build, refresh endpoint | DocCon (Guardian check) |
+| 2026-06-20 | Initial doc created (#143) | DocCon |
 
 ## Owner & Contacts
 
