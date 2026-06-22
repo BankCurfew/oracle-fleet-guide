@@ -423,6 +423,7 @@ Flow: Push to main → auto-deploy to BOTH CF Pages projects.
 
 | Date | What Changed | By |
 |------|-------------|-----|
+| 2026-06-22 | PRs #100 DateRollPicker, #101 calendar fix, #103 birthday 4-step merged + deployed to production (UI components, no API change) | BotDev/Admin |
 | 2026-06-21 | Profile overhaul (#153): 5→3 tabs, ProfileHeader, SettingsModal, OverviewTab, 833 LOC dead code removed. Policy UX (#154): QuickAddPolicyModal with inline riders, family badges, duplicate detection. Lead pipeline: emoji status labels, one-tap change. iCompare: CI duplicate fix. Saving Sure: 102-row rate table. 63 unit tests added. | BotDev |
 | 2026-06-21 | Added FHC API section (POST /fhc/create, /fhc/submit, GET /fhc/:token), iCheck route, product matching v3 (5 pillars), hospital tier aliases, Benefit Plus discount, proposals/create plan_data build, refresh endpoint | DocCon (Guardian check) |
 | 2026-06-20 | Initial doc created (#143) | DocCon |
