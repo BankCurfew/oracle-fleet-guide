@@ -2,9 +2,10 @@
 
 ## Overview
 
-- **What it does**: CLI tool + backend API server for managing the Oracle AI agent fleet. Provides tmux-based session orchestration, inter-agent messaging, project/task management, scheduled loop execution, and cross-machine federation.
+- **What it does**: CLI tool + backend API server for managing the Oracle AI agent fleet. Provides tmux-based session orchestration, inter-agent messaging, project/task management, scheduled loop execution, cross-machine federation, and a React dashboard with inbox, board, fleet views, and account usage monitoring.
 - **Who uses it**: All oracles (via `maw` CLI), BoB (fleet management), แบงค์ (dashboard monitoring), automated systems (loop engine, health checks).
 - **Where it runs**: Curfew server (WSL2). CLI installed globally via `bun link`. Backend API on `:3456` managed by PM2. Dashboard at `curfew.vuttipipat.com`.
+- **Canonical repo-level doc**: `maw-js/README.md` (Dev-maintained, feature-complete). This fleet doc provides the oracle-level overview.
 
 ## Architecture
 
@@ -17,7 +18,7 @@
 | Frontend | React 19 + Zustand + Tailwind | Dashboard UI (maw-ui) |
 | Terminal | tmux | Session/window orchestration for oracle agents |
 | Transport | HTTP, MQTT, WebSocket, tmux, SSH, LoRa | Pluggable transport layer |
-| Process Manager | PM2 | `ecosystem.config.cjs` — keeps server + loop engine alive |
+| Process Manager | PM2 | `ecosystem.config.cjs` — 4 services: maw, maw-boot, maw-bob, maw-syslog |
 | Build | Vite | Dashboard UI build |
 | Auth | PIN + QR code + session cookies | Dashboard access control |
 
@@ -54,13 +55,24 @@
 | `~/.config/maw/auth.json` | JSON | Auth credentials (username + password hash) |
 | `~/maw-js/ui-state.json` | JSON | Cross-device UI state |
 
+### PM2 Services
+
+| Process | Script | Purpose |
+|---------|--------|---------|
+| `maw` | `dist/server.js` | Main server (:3456) — API, WS, dashboard, loops |
+| `maw-boot` | `src/boot.ts` | One-shot fleet wake after server starts |
+| `maw-bob` | `src/serve-bob.ts` | BoB's dedicated endpoint (:3457) |
+| `maw-syslog` | `src/syslog.ts` | System event listener (feed.log → structured events) |
+
+PM2 memory gate: **3000M** (raised from 700M→1400M→3000M after #171 memory crisis). Server runs from `dist/server.js` (not src/) — Bun from-source transpile under PM2 drops private class methods (#166).
+
 ## Code Structure
 
 ```
 Curfew-Maw-js/
 ├── src/
-│   ├── cli.ts                      # Entry point — CLI router (442 lines)
-│   ├── server.ts                   # Hono API + WebSocket server (1,300+ lines)
+│   ├── cli.ts                      # Entry point — CLI router (60+ commands)
+│   ├── server.ts                   # Hono API + WebSocket server (~2,960 LOC, ~90 routes)
 │   ├── engine.ts                   # MawEngine — WebSocket message loop + health
 │   ├── handlers.ts                 # WebSocket message handlers
 │   ├── types.ts                    # TypeScript interfaces
@@ -429,35 +441,77 @@ pm2 restart maw
 ## Current State
 
 **Version**: v1.1.0
-**Status**: Production — federation + bud system stable, loop engine running
-**Files**: 142 TypeScript source files, 50+ CLI commands
+**Status**: Production — federation + bud system stable, loop engine running, memory stack hardened
+**Files**: ~190 TypeScript source files, 60+ CLI commands
 
-### Recent Commits (2026-06-19/20)
+### Evolution (Key Milestones)
+
 ```
-feat(office): #151 stall detection + routing 7→27 + firecrawl fallback + editor review
-feat(office): #150 supervisor audit, routing 7→27, doc gate on close
-feat(office): #140 add fasai alias for iAgencyAIA-Oracle
-feat(oracle-infra): #137 migrate-fleet.sh + backup-fleet.sh + session fixes
-chore: update hooks config — curfew migration post-migration day 1
+maw.env.sh (Oct 2025) → oracles() zsh (Mar 2026) → maw.js monolith (Mar 2026) → maw-js (Mar 2026)
 ```
 
-### Key Architecture Changes (2026-06-19/20)
+| Issue | What |
+|-------|------|
+| #154 | Bun.serve idleTimeout 10→30s (502 root cause) |
+| #156 | Inbox rework — relevance filter + reports grid |
+| #159 | Memory leak + rate limiting + backward pagination (11 commits) |
+| #160 | OracleSheet global usage header |
+| #162 | Inbox 2.0 — typed lanes, file gallery, RetryImg (8 commits) |
+| #166 | Sawtooth memory leak — stderr drain + PM2 dist pin (4 commits) |
+| #170 | Account Usage Windows — 3-card argus-style section |
+| #171 | RSS retention crisis — spawnSync, spawn limiter, double GC, mirror cache (8 commits) |
+| chip | Chip-copy-on-deliver — auto-copy file paths to inbox on send |
 
-| Change | Files | What |
-|--------|-------|------|
-| **ORACLE_MAP 7→27** | autopilot.ts | All 27 oracles mapped with keyword routing (20 rules) |
-| **Stall detection** | supervisor.ts | 2hr auto-nudge on HIGH priority tasks, 30min cooldown |
-| **PTY row-reflow** | pty.ts | Upstream #2409 port — rows match client viewport, width pinned 200 |
-| **Orphan-PTY sweep** | pty.ts + server.ts | Upstream #2414 port — kills leaked maw-pty-* sessions every 5min |
-| **tmux 200x200** | fleet.ts, tmux.conf, boot.sh | Prevents 24x80 default pane bug — Claude redraws enough rows for capture |
-| **Capture 1000 lines** | engine.ts | Increased from 80→300→1000 for scrollback depth |
-| **Terminal auto-scroll pause** | OracleSheet, MiniMonitor, MiniPreview, iPadDashboard | Detects user scroll-up, pauses auto-scroll |
-| **Startup noise filter** | ansi.ts processCapture | Filters direnv/CLAUDECODE/claude --resume from terminal display |
-| **SPA fallback routes** | server.ts | /office, /dashboard, /terminal all serve React app |
-| **Orbital + Fame removed** | App.tsx, StatusBar.tsx | Nav reduced 12→10 items |
-| **fasai alias** | find-window.ts, sovereign.ts | fasai→iagencyaia resolution |
-| **Migration scripts** | scripts/ | backup-fleet.sh + migrate-fleet.sh (8-phase idempotent) |
-| **28+ hooks fleet-wide** | ~/.oracle/hooks/ | validate-project-prefix, enforce-maw-hey, enforce-maw-loop, dispatch-needs-issue, etc. |
+### Earlier Architecture Changes (2026-06)
+
+| Change | What |
+|--------|------|
+| **ORACLE_MAP 7→27** | All 27 oracles mapped with keyword routing (20 rules) |
+| **Stall detection** | 2hr auto-nudge on HIGH priority tasks, 30min cooldown |
+| **PTY row-reflow** | Upstream #2409 port — rows match client viewport, width pinned 200 |
+| **Orphan-PTY sweep** | Upstream #2414 port — kills leaked maw-pty-* sessions every 5min |
+| **tmux 200x200** | Prevents 24x80 default pane bug |
+| **Capture 1000 lines** | Increased from 80→300→1000 for scrollback depth |
+| **28+ hooks fleet-wide** | validate-project-prefix, enforce-maw-hey, enforce-maw-loop, etc. |
+
+### Dashboard Key Features (Jul 2026)
+
+| Feature | What |
+|---------|------|
+| **OracleSheet** (79K LOC) | Full agent view: transcript, comms, thinking, status, inline file chips |
+| **Inbox 2.0** (#162) | Typed message lanes (Tasks, Reports, Messages), file-centric gallery with RetryImg (iOS Safari ITP fix), read-state tracking |
+| **Account Usage** (#170) | 3-card argus-style panel showing Claude API consumption (proxied from server-monitor :3459) |
+| **File Chips** | Clickable file thumbnails/previews in message bubbles; chip-copy-on-deliver ensures files accessible from `~/.maw/inbox/chips/` |
+| **WebSocket reconnect** | Exponential backoff (1s base, 1.5x, 15s cap, jitter), background tab disconnect on visibilityState hidden |
+
+Dashboard routes: `#dashboard`, `#fleet`, `#office`, `#overview`, `#terminal`, `#inbox`, `#board`, `#loops`, `#config`, `/federation`.
+
+### Memory Management (#166 / #171)
+
+The #171 memory crisis (8 rounds of investigation) established the current memory stack:
+
+| Layer | What | Why |
+|-------|------|-----|
+| `Bun.spawnSync` for local | 21KB vs 3MB per spawn (143x reduction) | Bun.spawn async retains native memory per call |
+| Stderr drain everywhere | All spawn sites drain both stdout AND stderr | Unconsumed stderr pipe leaks ~4.4KB/spawn RSS |
+| Spawn concurrency limiter | Semaphore, max 8 concurrent | Caps peak native memory from parallel spawns |
+| Double GC tap | 2s interval, two `Bun.gc(true)` calls 100ms apart when RSS>300MB | Single GC marks pages free but OS doesn't unmap; double tap forces reclaim |
+| Mirror response cache | 2s TTL, 100 entry cap for /api/mirror | HTTP native retention ~3KB/req at 52 req/s was unsustainable |
+| Capture cache | 5s TTL + single-inflight dedup | ~50x fewer tmux spawns |
+| PM2 gate 3000M | `max_memory_restart` raised from 700M | Avoids false restarts from transient RSS spikes |
+| `BUN_JSC_forceGCSlowPaths=1` | PM2 env | Forces JSC to use slower but more thorough GC paths |
+
+Debug endpoints: `/api/debug/memory` (RSS/heap/GC stats + spawn counters + traffic), `/api/debug/gc` (force GC), `/api/debug/deep` (deep analysis).
+
+### Chip-Copy-On-Deliver
+
+When `maw hey` sends a message containing file paths, the chip system:
+1. Scans message for paths matching `.(png|jpg|webp|gif|html|pdf|md|txt)`
+2. Copies files to `~/.maw/inbox/chips/{sender}-{filename}`
+3. Rewrites paths in message to `/.maw/inbox/chips/...`
+4. Guards: skip files already in inbox, skip >50MB, skip non-files
+
+Ensures dashboard `/api/file` can always resolve chip paths regardless of source oracle repo.
 
 ### Known Limitations
 - Loop engine checks every 30 seconds (not sub-second precision)
