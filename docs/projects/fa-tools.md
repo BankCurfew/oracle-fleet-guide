@@ -2,8 +2,8 @@
 
 ## Overview
 
-- **What it does**: Professional insurance advisory toolkit for Financial Advisors (FAs) at AIA Thailand. Provides fast premium quotation (iQuick), detailed financial planning (iPlan), multi-product comparison (iCompare), UnitLink investment simulation (iLink), portfolio management with gap analysis, Financial Health Check (FHC), lead tracking, and a digital application form — all via a PWA.
-- **Who uses it**: Financial Advisors (authenticated), admin users (20+ config tabs), unauthenticated users (Basic Quick Mode for quick/plan/compare), and shared proposal viewers (public links, no auth).
+- **What it does**: Professional insurance advisory toolkit for Financial Advisors (FAs) at AIA Thailand. Provides fast premium quotation (iQuick), detailed financial planning (iPlan), multi-product comparison (iCompare), UnitLink investment simulation (iLink), portfolio management with gap analysis, Financial Health Check (FHC), lead tracking, digital application form, agent training hub (iProcess with calendar/materials/exam/checklist), Hall of Fame recognition system (MDRT/COT/TOT awards + weekly performance tracking), and agent recruitment pipeline (iRecruit with public join form + prospect portal) -- all via a PWA.
+- **Who uses it**: Financial Advisors (authenticated), Agency Leaders (team management + performance entry), admin users (20+ config tabs), unauthenticated users (Basic Quick Mode for quick/plan/compare), shared proposal viewers (public links, no auth), and recruitment prospects (public join form + portal).
 - **Where it runs**: Production at `tools.iagencyaia.com`, staging at `fatools.vuttipipat.com` (both Cloudflare Pages). Backend on Supabase project `hztjrqlxrdsmxbkxojqg` (iAgencyAIA org).
 
 ## Architecture
@@ -27,15 +27,18 @@
 
 ```
 Browser (PWA)
-  ├── React SPA → Supabase REST API (product data, proposals, leads)
+  ├── React SPA → Supabase REST API (product data, proposals, leads, training, recruitment)
   ├── React SPA → Supabase Auth (GitHub OAuth)
+  ├── React SPA → Supabase Storage (training materials, recruit docs)
   ├── React SPA → Edge Functions (chat, screenshots, fund scraping)
-  └── Shared links → Public proposal viewer (no auth, RLS-gated)
+  ├── Shared links → Public proposal viewer (no auth, RLS-gated)
+  └── Recruit links → Public join form + prospect portal (prospect auth)
 
 Supabase
-  ├── PostgreSQL (67+ tables, RLS on all)
-  ├── 17 Deno Edge Functions
-  ├── Auth (GitHub OAuth primary)
+  ├── PostgreSQL (80+ tables, RLS on all)
+  ├── 21 Deno Edge Functions
+  ├── Auth (GitHub OAuth primary, prospect email/password)
+  ├── Storage (training materials, recruit docs)
   └── AES-GCM 256-bit encryption (40+ sensitive fields)
 ```
 
@@ -60,43 +63,70 @@ Supabase
 | `portfolio_customers` / `portfolio_policies` | Portfolio management |
 | `app_settings` / `app_roles` | System config + RBAC |
 | `admin_audit_log` | Audit trail |
+| `hall_of_fame` | HoF awards (MDRT/COT/TOT, monthly, yearly). frame_type enum, fyp_amount |
+| `weekly_performance` | Weekly FYP/APE/case data per agent. UNIQUE(agent_id, week_start). AL-team RLS |
+| `team_members` | AL team rosters (agent_id FK to fa_profiles) |
+| `training_courses` / `course_occurrences` | iProcess training catalog + scheduled rounds |
+| `training_enrollments` | Agent enrollment per occurrence |
+| `training_materials` | Course materials (PDF/docs) linked to occurrences |
+| `recruit_links` | Recruitment invite links per FA (agent_id scoped) |
+| `prospects` | Recruitment prospect records (PDPA consented_at, user_id FK) |
+| `prospect_stage_history` | Stage progression audit trail (13-stage enum) |
+| `prospect_checklist` | Per-prospect checklist items (prospect-tickable + doc upload) |
 
-Total: 67+ tables, 221 migrations.
+Total: 80+ tables, 268 migrations.
 
 ## Code Structure
 
 ```
 iagencyaiafatools/
 ├── src/
-│   ├── pages/                      # 17 route-level components
+│   ├── pages/                      # 31 route-level components
 │   │   ├── Dashboard.tsx           # Main hub (7 modes)
 │   │   ├── Admin.tsx               # Admin console (20+ tabs)
 │   │   ├── Profile.tsx             # FA profile (3 tabs: Overview, Customers, Tools), settings modal
-│   │   ├── SharedProposal.tsx      # Public shared views (1,650 LOC)
+│   │   ├── SharedProposal.tsx      # Public shared views
 │   │   ├── AnalyzePolicy.tsx       # Portfolio management + gap analysis
-│   │   └── ApplicationForm.tsx     # 6-step application form
+│   │   ├── ApplicationForm.tsx     # 6-step application form
+│   │   ├── HallOfFame.tsx          # Awards (MDRT/COT/TOT), monthly leaderboard, weekly perf
+│   │   ├── IProcess.tsx            # Training hub (calendar, materials, exam, checklist)
+│   │   ├── IRecruit.tsx            # Recruitment pipeline (prospects, stages, CAT links)
+│   │   ├── RecruitJoin.tsx         # Public join form (PDPA consent + auto auth)
+│   │   ├── RecruitPortal.tsx       # Prospect portal (13-stage step list, doc upload)
+│   │   ├── TeamDashboard.tsx       # AL team view (stats, alerts, training)
+│   │   └── UnitLinkSimulator.tsx   # Standalone UnitLink simulator
 │   │
-│   ├── components/                 # 340+ files
+│   ├── components/                 # 398 files
 │   │   ├── quickmode/              # iQuick fast quotation (17 files)
-│   │   ├── planmode/               # iPlan detailed planning (23 files, 10.7K LOC)
+│   │   ├── planmode/               # iPlan detailed planning (23 files)
 │   │   ├── comparemode/            # iCompare multi-product (10 files)
 │   │   ├── unitlink/               # UnitLink simulator (14 files)
 │   │   ├── admin/                  # Admin dashboard (31 files)
 │   │   ├── export/                 # PDF/image/Excel export (9 files)
 │   │   ├── portfolio/              # Portfolio management (14 files)
 │   │   ├── leads/                  # Lead management (7 files)
-│   │   ├── profile/                # FA profile (14 files — ProfileHeader, OverviewTab, SettingsModal, QuickAddPolicyModal, ProposalCard, ProposalListItem)
+│   │   ├── profile/                # FA profile (14 files)
 │   │   ├── financial-health/       # FHC scoring
+│   │   ├── halloffame/             # WeeklyPerformanceEntry, PerformanceRankings
+│   │   ├── iprocess/               # TrainingCalendar, MaterialViewer, ScheduleManager, ExamSection, etc. (29 files)
+│   │   ├── recruit/                # CareerPathTimeline, FAIncomeCalculator, RecruitCalculationEngine (5 files)
+│   │   ├── auth/                   # TosGate (merged TOS+consent), SignUpForm, ProfileImageGate
+│   │   ├── shared/                 # AppHeader, BrandWordmark — shared layout components
 │   │   └── ui/                     # shadcn/ui primitives (82 files)
 │   │
-│   ├── engine/ or hooks/           # 25 custom React hooks
+│   ├── hooks/                      # 44 custom React hooks
 │   │   ├── useAuth.ts
 │   │   ├── useCachedData.ts        # 4-layer caching (IndexedDB → SessionStorage)
-│   │   ├── useCompareMode.ts       # Compare state (1,580 LOC)
+│   │   ├── useCompareMode.ts       # Compare state
 │   │   ├── usePermissions.ts       # RBAC
-│   │   └── (21 more)
+│   │   ├── useWeeklyPerformance.ts # Weekly FYP/APE data (upsert, monthly aggregation)
+│   │   ├── useRecruit.ts           # Recruitment CRUD (prospects, links, stages, checklist)
+│   │   ├── useTeamMembers.ts       # AL team roster management
+│   │   ├── useCourseMaterials.ts   # Training material queries
+│   │   ├── useOccurrenceSchedule.ts # Calendar occurrence scheduling
+│   │   └── (35 more)
 │   │
-│   ├── lib/                        # 43 utility modules
+│   ├── lib/                        # 66 utility modules
 │   │   ├── premium-calc.ts         # Core premium formula
 │   │   ├── tax-calculator.ts       # Thai tax brackets (1,557 LOC)
 │   │   ├── vitality-discount.ts    # Vitality scoring (356 LOC)
@@ -108,7 +138,8 @@ iagencyaiafatools/
 │   │   ├── i18n.ts                 # Translation dict (400+ labels)
 │   │   ├── form-validation.ts      # Zod schemas (54 KB)
 │   │   ├── export-utils.ts         # PDF/Excel formatting (77 KB)
-│   │   └── encryption-utils.ts     # AES-GCM 256-bit
+│   │   ├── encryption-utils.ts     # AES-GCM 256-bit
+│   │   └── share-url.ts           # Share token generation (forced letter, no all-numeric)
 │   │
 │   ├── integrations/supabase/
 │   │   ├── client.ts               # Supabase singleton
@@ -118,16 +149,19 @@ iagencyaiafatools/
 │   └── data/                       # Static data (addresses, banks, nationalities)
 │
 ├── supabase/
-│   ├── functions/                  # 17 Deno Edge Functions
+│   ├── functions/                  # 21 Deno Edge Functions
 │   │   ├── api-gateway/            # Unified API entry + auth
 │   │   ├── submit-lead/            # Lead webhook (10 req/min rate limit)
 │   │   ├── insurance-chat/         # OpenAI Q&A
 │   │   ├── encrypt-decrypt/        # Encryption service
 │   │   ├── fetch-aia-funds/        # Live fund NAV scraper
 │   │   ├── screenshot-proposal/    # Proposal → PNG/JPG
-│   │   └── (11 more)
+│   │   ├── sync-ijourney-card/     # Cross-project quiz card sync (iJourney → FA Tools)
+│   │   ├── create-recruit-lead/    # Recruitment prospect creation
+│   │   ├── embed-query/            # Embedding query service
+│   │   └── (12 more)
 │   │
-│   └── migrations/                 # 221 PostgreSQL migrations
+│   └── migrations/                 # 268 PostgreSQL migrations
 │
 ├── CLAUDE.md                       # Architecture + dev rules
 ├── CLAUDE_code_conduct.md          # Code standards
@@ -140,10 +174,15 @@ iagencyaiafatools/
 
 | File | Purpose |
 |------|---------|
-| `src/pages/Dashboard.tsx` | Main hub — routes to 7 modes |
+| `src/pages/Dashboard.tsx` | Main hub -- routes to 7 modes |
 | `src/pages/Admin.tsx` | Admin console (20+ tabs) |
 | `src/pages/SharedProposal.tsx` | Public shared proposal viewer |
-| `src/components/PremiumCalculator.tsx` | Premium calc UI (2,828 LOC) |
+| `src/pages/HallOfFame.tsx` | Awards + weekly performance entry + rankings |
+| `src/pages/IProcess.tsx` | Training hub (calendar, materials, exam, checklist) |
+| `src/pages/IRecruit.tsx` | Recruitment pipeline + CAT link management |
+| `src/components/AppHeader.tsx` | Shared header (license bar + BrandWordmark + FA info) |
+| `src/components/ProtectedRoute.tsx` | Auth gate with self-healing (clears stale on 2nd timeout) |
+| `src/components/PremiumCalculator.tsx` | Premium calc UI |
 | `supabase/functions/api-gateway/` | Unified API proxy with auth |
 
 ## Business Logic
@@ -255,6 +294,9 @@ All at `https://<project>.supabase.co/functions/v1/<name>`
 | `sync-peer-avg` | POST | Peer comparison sync |
 | `backfill-lead-sync` | POST | Data backfill utility |
 | `migrate-proposals-to-policies` | POST | Data migration |
+| `sync-ijourney-card` | POST | Cross-project quiz card sync (iJourney quiz DB → FA Tools agent_onboarding) |
+| `create-recruit-lead` | POST | Recruitment prospect creation |
+| `embed-query` | POST | Vector embedding query |
 
 ### FHC (Financial Health Check) API — NEW (#119, #120, #142, #148)
 
@@ -282,18 +324,27 @@ All at `https://<project>.supabase.co/functions/v1/<name>`
 
 ### Frontend Routes
 
-| Route | Component | Purpose |
-|-------|-----------|---------|
-| `/` | Dashboard | Main hub (7 modes) |
-| `/admin` | Admin | Admin console (20+ tabs) |
-| `/profile` | Profile | FA profile, cards, calendar |
-| `/iquick/:token` | SharedProposal | Public iQuick view |
-| `/iplan/:token` | SharedProposal | Public iPlan view |
-| `/icompare/:token` | SharedProposal | Public iCompare view |
-| `/ilink/:token` | SharedProposal | Public iLink view |
-| `/icheck/:token` | SharedProposal | Public FHC/iCheck result view (NEW) |
-| `/analyze` | AnalyzePolicy | Portfolio gap analysis |
-| `/application/:token` | ApplicationForm | 6-step form |
+| Route | Component | Auth | Purpose |
+|-------|-----------|------|---------|
+| `/` | Dashboard | FA | Main hub (7 modes) |
+| `/admin` | Admin | Admin | Admin console (20+ tabs) |
+| `/profile` | Profile | FA | FA profile, cards, calendar |
+| `/halloffame` | HallOfFame | FA | MDRT/COT/TOT awards, monthly leaderboard, weekly perf entry |
+| `/iprocess` | IProcess | FA | Training hub (calendar, materials, exam, checklist) |
+| `/iprocess/scan` | ScanAction | FA | QR scanner for training check-in |
+| `/irecruit` | IRecruit | FA | Recruitment pipeline (prospects, stage mgmt, CAT links) |
+| `/irecruit/join/:token` | RecruitJoin | Public | Prospect join form (PDPA consent + auto auth) |
+| `/irecruit/portal` | RecruitPortal | Prospect | 13-stage step list, doc upload, CAT link |
+| `/team-dashboard` | TeamDashboard | AL | Team stats, alerts, training overview |
+| `/simulator` | UnitLinkSimulator | FA | Standalone UnitLink projection |
+| `/analyzepolicy` | AnalyzePolicy | FA | Portfolio gap analysis |
+| `/iquick/:token` | SharedProposal | Public | Public iQuick view |
+| `/iplan/:token` | SharedProposal | Public | Public iPlan view |
+| `/icompare/:token` | SharedProposal | Public | Public iCompare view |
+| `/ilink/:token` | SharedProposal | Public | Public iLink view |
+| `/icheck/:token` | SharedProposal | Public | Public FHC/iCheck result view |
+| `/apply/:token` | ApplicationForm | Public | 6-step application form |
+| `/l/:token` | ShortLinkResolver | Public | Short link redirect |
 
 ## Deployment
 
@@ -369,10 +420,10 @@ Flow: Push to main → auto-deploy to BOTH CF Pages projects.
 
 ### What's Working
 
-- All 8 modes operational (iQuick, iPlan, iCompare, iLink, iCheck/FHC, Portfolio, Leads, Application)
+- All 8 quotation modes operational (iQuick, iPlan, iCompare, iLink, iCheck/FHC, Portfolio, Leads, Application)
 - 117 insurance products with premium data
 - Vitality + special discount engines
-- Public shared proposal links
+- Public shared proposal links (SSoT persistence -- comparePolicyYearData saved at share time, zero DB re-queries)
 - Admin console with 20+ configuration tabs
 - i18n (TH/EN) at 100% DB column coverage
 - AES-GCM encryption on 40+ sensitive fields
@@ -380,6 +431,13 @@ Flow: Push to main → auto-deploy to BOTH CF Pages projects.
 - Lead pipeline with emoji status badges and one-tap status change
 - 63 Vitest unit tests for profile components
 - Duplicate lead detection (phone auto-match)
+- **Hall of Fame** (MDRT/COT/TOT yearly awards, Top of Month 12-month grid, weekly performance entry with AL-team scoping, performance rankings with leaderboards)
+- **iProcess training hub** (multi-occurrence calendar with enrollment counts keyed by occurrence_id, PDF material viewer with storage.download() fallback, schedule manager with sanitized uploads, exam section, 29-step onboarding checklist)
+- **iRecruit pipeline** (prospect list with stage filter, 13-stage progression, CAT link resolver strict to recruiter_agent_id, public join form with PDPA consent, prospect portal with doc upload)
+- **Shared components** (AppHeader with license bar + BrandWordmark + FA info, used across HallOfFame/IProcess/Profile)
+- **Self-healing auth** (ProtectedRoute tracks consecutive timeouts; on 2nd clears stale caches + SW + reloads)
+- **Self-destruct service worker** (SW v2: clear caches, unregister, navigation-only fetch handler)
+- **Merged TOS + data consent** (single TosGate modal checks tos_accepted_at + tos_version + data_consent_accepted_at)
 
 ### Known Issues / Technical Debt
 
@@ -389,43 +447,48 @@ Flow: Push to main → auto-deploy to BOTH CF Pages projects.
 | LeadPoliciesManager 4,088 LOC | Medium | Needs decomposition — quick-add modal extracted but full manager still monolithic |
 | Rate limits only on `submit-lead` | Medium | Other edge functions unprotected |
 | 20+ `any` usages | Low | Should be typed interfaces |
-| Component bloat | Low | CompareMode.tsx (74KB), SharedProposal.tsx (1,650 LOC) |
+| Component bloat | Low | CompareMode.tsx (74KB), SharedProposal.tsx (102KB), LeadPoliciesManager.tsx (189KB) |
+| Legacy NULL-occurrence enrollments | Low | Old enrollment rows have NULL occurrence_id; pending decision to migrate to round 1 vs keep course-level |
 
 ### Historical Incidents
 
-1. **`select('*')` silent column mismatch** (2026-03-20) — Column `discount_duration` removed from query but only `discount_duration_years` exists. All discounts broken for 23 days undetected.
-2. **CI/Accident paymentPeriod=0 falsy check** (2026-04-12) — `0 || undefined` converted valid zero to undefined, breaking special discounts for CI/Accident products.
-3. **Silent try/catch** — Multiple catch blocks swallowed errors without logging.
+1. **`select('*')` silent column mismatch** (2026-03-20) -- Column `discount_duration` removed from query but only `discount_duration_years` exists. All discounts broken for 23 days undetected.
+2. **CI/Accident paymentPeriod=0 falsy check** (2026-04-12) -- `0 || undefined` converted valid zero to undefined, breaking special discounts for CI/Accident products.
+3. **Silent try/catch** -- Multiple catch blocks swallowed errors without logging.
+4. **iCompare share premium regression** (#242/#247, 2026-07-22) -- SharedComparePremiumTable recalculated premiums from DB instead of using saved values. Fixed with band-anchor pattern (saved premium at baseAge band always wins) + SSoT persistence (comparePolicyYearData saved into plan_data at share time). 2 regressions before final fix.
+5. **Safari login stuck** (#241, 2026-07-22) -- Stale service worker cache caused infinite auth spin on Safari. Fixed with self-destruct SW v2 + ProtectedRoute self-healing (clear caches on 2nd consecutive timeout).
+6. **Calendar wrong enrollment counts** (#264, 2026-07-24) -- Enrollment counts aggregated by course_id only, showing all rounds' total instead of per-occurrence. 4 rounds of fixes to find true root: counts loop, detail dialog, materials, and roster names all needed occurrence_id keying.
+7. **CF Pages dual-project drift** (2026-06-20) -- `fatools` project had deployments_enabled=FALSE for weeks. All wrangler deploys went to staging only. Production stuck on old build.
 
-### Recent Commits
+### Recent Commits (as of 2026-07-24)
 
 | Hash | Description |
 |------|-------------|
-| (latest) | fix(icompare): CI Pro Care / CI Super Care duplicate benefits when main contract |
-| (latest) | feat(policy): #154 main+rider bundle QuickAddPolicyModal |
-| (latest) | feat(leads): smart duplicate detection + one-tap status change |
-| (latest) | feat(profile): #153 Designer wireframe — 5→3 tabs + header + settings modal |
-| (latest) | fix(profile): #153 fix 15/16 QA issues — soft-delete, stats, i18n, DRY |
-| (latest) | data: Saving Sure full rate table — 102 rows from Benefit Plus manual |
-| (latest) | test(profile): 63 unit tests — proposal-types, useBirthdayAnniversary, formatCompact |
-| `ce3e95a2` | fix(api): BUG9 regression — hospital tier mapping accepts aliases |
-| `2790baef` | fix(api): BUG13 — /fhc/create and /fhc/submit build full plan_data |
-| `baa544fe` | fix: /fhc/submit creates fhc_results + fhc_plans |
-| `a5daa33b` | fix: BUG12 pillar gauges redesigned — 5 pillars capped 100% |
-| `1f5b55c5` | feat: FHC 4 refinements from แบงค์ |
-| `d9edad77` | feat: POST /fhc/submit — conversational FHC for ฟ้าใส |
-| `8c398e9a` | feat: FHC product matching v3 — 5 pillars |
-| `dbfb2d8e` | feat: FHC Scoring V3 — gap analysis + ratios + health scoring |
-| `5435567a` | feat: API server logging + admin viewer |
-| `258c9eeb` | feat: iCheck share link — FA contact + ลองทำเอง + แชร์ |
+| `4a5e7207` | fix: roster names per-occurrence (#264 r6) |
+| `efb2eeb8` | fix: enrollment counts keyed by occurrence_id (#264 true root) |
+| `f74b9ee7` | fix: CORS headers on sync-ijourney-card (#263) |
+| `e3518f65` | fix: simulator empty-state card (#262.1) |
+| `80a4a98a` | feat: merge TOS + data consent into single TosGate (#261) |
+| `...` | feat: iRecruit MVP + portal + PDPA consent (#256) |
+| `...` | feat: HoF weekly performance system + team-scoped entry (#257) |
+| `...` | feat: Hall of Fame with MDRT/COT/TOT + monthly leaderboard (#240/#251) |
+| `...` | feat: iProcess training calendar occurrence-keyed (#264) |
+| `...` | feat: AppHeader + BrandWordmark shared components (#244) |
+| `...` | fix: iCompare share premium band-anchor + SSoT persistence (#242/#247) |
+| `...` | feat: PDF material viewer with storage.download() fallback (#246) |
+| `...` | fix: Safari login stuck -- self-destruct SW v2 (#241) |
+| `...` | feat: Profile arc (#237-#239) |
+| `...` | feat: console-strip (#259), font optimization (#260) |
 
 ## Changelog
 
 | Date | What Changed | By |
 |------|-------------|-----|
+| 2026-07-26 | Doc-sync: updated for #237-#264 (50 commits since last update). Added HoF, iProcess, iRecruit, recruit, auth sections. Updated routes (19), components (398), hooks (44), lib (66), edge functions (21), migrations (268), DB tables (80+), LOC (~190K). Added incidents #241/#242/#247/#264. | BotDev |
+| 2026-07-22-24 | W30 mega session: Hall of Fame engine (#240/#251/#257), iRecruit MVP + portal (#256), iProcess calendar occurrence-keyed (#264), AppHeader/BrandWordmark (#244), merged TOS+consent (#261), self-destruct SW (#241), iCompare share SSoT (#242/#247), PDF viewer (#246), self-healing auth, font optimization (#260), simulator empty-state (#262.1), CORS sync-ijourney-card (#263). 46 issues shipped. | BotDev |
 | 2026-06-22 | PRs #100 DateRollPicker, #101 calendar fix, #103 birthday 4-step merged + deployed to production (UI components, no API change) | BotDev/Admin |
-| 2026-06-21 | Profile overhaul (#153): 5→3 tabs, ProfileHeader, SettingsModal, OverviewTab, 833 LOC dead code removed. Policy UX (#154): QuickAddPolicyModal with inline riders, family badges, duplicate detection. Lead pipeline: emoji status labels, one-tap change. iCompare: CI duplicate fix. Saving Sure: 102-row rate table. 63 unit tests added. | BotDev |
-| 2026-06-21 | Added FHC API section (POST /fhc/create, /fhc/submit, GET /fhc/:token), iCheck route, product matching v3 (5 pillars), hospital tier aliases, Benefit Plus discount, proposals/create plan_data build, refresh endpoint | DocCon (Guardian check) |
+| 2026-06-21 | Profile overhaul (#153): 5->3 tabs, ProfileHeader, SettingsModal, OverviewTab, 833 LOC dead code removed. Policy UX (#154): QuickAddPolicyModal with inline riders. Lead pipeline: emoji status labels. iCompare: CI duplicate fix. Saving Sure: 102-row rate table. 63 unit tests. | BotDev |
+| 2026-06-21 | Added FHC API section, iCheck route, product matching v3, hospital tier aliases, Benefit Plus discount | DocCon |
 | 2026-06-20 | Initial doc created (#143) | DocCon |
 
 ## Owner & Contacts
@@ -442,13 +505,13 @@ Flow: Push to main → auto-deploy to BOTH CF Pages projects.
 
 | Metric | Value |
 |--------|-------|
-| Components | 340+ |
-| Pages | 17 |
-| Custom Hooks | 25 |
-| Edge Functions | 17 |
-| Database Tables | 67+ |
-| Migrations | 221 |
-| Utility Modules | 43 |
+| Components | 398 |
+| Pages | 31 |
+| Custom Hooks | 44 |
+| Edge Functions | 21 |
+| Database Tables | 80+ |
+| Migrations | 268 |
+| Utility Modules | 66 |
 | Insurance Products | 118 |
 | Premium Records | 14,100+ |
-| Estimated LOC | ~120,000 |
+| Estimated LOC | ~190,000 |
