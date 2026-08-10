@@ -250,6 +250,28 @@ BoB never idles after dispatch. Active loops (from CLAUDE_loops.md):
 | `talk-to-enforcer.sh` | Bash PostToolUse | Log /talk-to usage |
 | `bob-monitor-needs-loop.sh` | Bash PostToolUse | Alert if monitor task missing loop |
 | `context-guardian.sh` | PostToolUse | Warn if context > 70% |
+| `stop` hook | Stop (settings.json) | G-TOKEN autoclear — same-turn consumer of marker files (T271) |
+
+### G-TOKEN Autoclear System (T263 Sweeper Rewrite, W32 Aug 2026)
+
+Producer-consumer architecture for automated session recycling when context exceeds G-TOKEN-2 threshold (300k).
+
+**Architecture**: producer (`g-token-autoclear.sh` via `/save` Step 7) --> stop hook (same-turn consumer) --> sweeper (cron consumer via symlink from `~/.oracle/tools/`)
+
+**Script**: `Admin-Oracle/scripts/g-token-autoclear-sweeper.sh`
+
+| Component | Behavior |
+|-----------|----------|
+| **DIRTY scope** | Untracked files counted only in `inbox/handoff/` + `retrospectives/` (not full repo) |
+| **SAVE_OK** | Evidence merged into while-loop condition -- requires HEAD sha change OR handoff mtime change (positive evidence gate) |
+| **Adaptive timer** | Idle ticks count toward 180s patience, busy ticks skip, 900s wall cap |
+| **Boot verify** | Accepts `pane_busy` OR status bar as success, 300s window |
+| **Marker integration** | Sweeper reads `~/.oracle/autoclear-request/`, honors as eligible trigger, consumes after processing, GC stale >6h |
+| **Session guard** | Marker filename must match pane current `SESSION_ID`, stale-session markers GC'd immediately |
+| **MARKER_DIR fix** | Variable declared at top, `trap ERR` for crash logging, sweep start log line |
+| **flock** | Kernel-level single-instance guard replaces PID lock (TOCTOU race proven) |
+| **pane_busy** (T272) | Uses structural indicators (esc-to-interrupt + token pattern) replacing spinner word list |
+| **pipefail** (T255) | `grep -q \|\| true` patterns for pipefail compatibility |
 
 ### The 11 Laws
 
@@ -384,9 +406,11 @@ GITHUB_TOKEN=...             # gh CLI (auto from gh auth)
 
 ### Recent Activity
 
-Latest commit: `8a0de2d` (2026-06-20) — "docs: /save — Day 3 continued: FA Tools deployed"
-
 Key recent work:
+- **W32 Aug 2026 — T263 Sweeper Rewrite**: Full rewrite of `g-token-autoclear-sweeper.sh` — DIRTY scope narrowed, SAVE_OK positive evidence gate, adaptive timer, flock single-instance, marker integration with session guard
+- **T271**: Stop hook wired in `~/.claude/settings.json` (was never registered)
+- **T272**: `pane_busy` detection rewritten — structural indicators (esc-to-interrupt + token pattern) replacing spinner word list
+- **T255**: pipefail compatibility — `grep -q || true` patterns throughout
 - CURFEW migration (all paths /home/mbank → /home/curfew)
 - Fleet roster rebuild (pulse.config.json, 27 oracles)
 - Hook system hardening (14+ hooks)

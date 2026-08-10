@@ -31,12 +31,13 @@ Browser (PWA)
   ├── React SPA → Supabase Auth (GitHub OAuth)
   ├── React SPA → Supabase Storage (training materials, recruit docs)
   ├── React SPA → Edge Functions (chat, screenshots, fund scraping)
-  ├── Shared links → Public proposal viewer (no auth, RLS-gated)
+  ├── Shared links → Public proposal viewer (no auth, SECURITY DEFINER RPCs)
   └── Recruit links → Public join form + prospect portal (prospect auth)
 
 Supabase
   ├── PostgreSQL (80+ tables, RLS on all)
   ├── 21 Deno Edge Functions
+  ├── SECURITY DEFINER RPCs (application share token resolution, view recording)
   ├── Auth (GitHub OAuth primary, prospect email/password)
   ├── Storage (training materials, recruit docs)
   └── AES-GCM 256-bit encryption (40+ sensitive fields)
@@ -73,8 +74,11 @@ Supabase
 | `prospects` | Recruitment prospect records (PDPA consented_at, user_id FK) |
 | `prospect_stage_history` | Stage progression audit trail (13-stage enum) |
 | `prospect_checklist` | Per-prospect checklist items (prospect-tickable + doc upload) |
+| `agent_prospects` | FA prospect/lead assessment (T260). 13 scoring columns: source_category, occupation_score, income_score, savings, spending_authority (NOT affordability), dependents, welfare, health_score, age_difference, meeting_ease, referral_potential, assessment_score, prospect_status. Auto-scored. |
+| `application_shares` | Application share tokens. Anon SELECT dropped (#253); access via SECURITY DEFINER RPCs only |
+| `policy_investments_deprecated` | Legacy policy investments. Anon SELECT dropped (#254); service_role policy scoped |
 
-Total: 80+ tables, 268 migrations.
+Total: 80+ tables, 270+ migrations.
 
 ## Code Structure
 
@@ -161,7 +165,7 @@ iagencyaiafatools/
 │   │   ├── embed-query/            # Embedding query service
 │   │   └── (12 more)
 │   │
-│   └── migrations/                 # 268 PostgreSQL migrations
+│   └── migrations/                 # 270+ PostgreSQL migrations
 │
 ├── CLAUDE.md                       # Architecture + dev rules
 ├── CLAUDE_code_conduct.md          # Code standards
@@ -438,6 +442,9 @@ Flow: Push to main → auto-deploy to BOTH CF Pages projects.
 - **Self-healing auth** (ProtectedRoute tracks consecutive timeouts; on 2nd clears stale caches + SW + reloads)
 - **Self-destruct service worker** (SW v2: clear caches, unregister, navigation-only fetch handler)
 - **Merged TOS + data consent** (single TosGate modal checks tos_accepted_at + tos_version + data_consent_accepted_at)
+- **P0 Security: anon exposure closed** (#253/#254) -- dropped anon SELECT on `application_shares` + `policy_investments_deprecated`, replaced with SECURITY DEFINER RPCs (`get_application_share_by_token`, `resolve_application_share_token`, `record_application_share_view`). `service_role` policy scoped TO service_role. FE: SharedApplicationView.tsx + ShortLinkResolver.tsx switched to RPC calls.
+- **iList Autosave** -- per-row DB autosave with 2.5s debounce replaces manual-only save. `savedIds` invariant (`_isDirty` only cleared on DB success). Status indicator (saving/saved/error+retry). Per-tab draft isolation via sessionStorage `tabId`. Orphan draft recovery with user prompt + 7-day sweep. `_rev` guard against in-flight edit race.
+- **T260 Prospect Assessment** -- 13 new scoring columns on `agent_prospects` (source_category, occupation_score, income_score, savings, spending_authority, dependents, welfare, health_score, age_difference, meeting_ease, referral_potential, assessment_score, prospect_status). Collapsible UI in ProspectListTable with auto-score. Note: `spending_authority` is NOT affordability (separate concept). Assessment section defaults to open per แบงค์ order (#273).
 
 ### Known Issues / Technical Debt
 
@@ -459,11 +466,16 @@ Flow: Push to main → auto-deploy to BOTH CF Pages projects.
 5. **Safari login stuck** (#241, 2026-07-22) -- Stale service worker cache caused infinite auth spin on Safari. Fixed with self-destruct SW v2 + ProtectedRoute self-healing (clear caches on 2nd consecutive timeout).
 6. **Calendar wrong enrollment counts** (#264, 2026-07-24) -- Enrollment counts aggregated by course_id only, showing all rounds' total instead of per-occurrence. 4 rounds of fixes to find true root: counts loop, detail dialog, materials, and roster names all needed occurrence_id keying.
 7. **CF Pages dual-project drift** (2026-06-20) -- `fatools` project had deployments_enabled=FALSE for weeks. All wrangler deploys went to staging only. Production stuck on old build.
+8. **P0 Anon exposure on application_shares + policy_investments_deprecated** (#253/#254, 2026-08-10) -- anon role had SELECT on `application_shares` and `policy_investments_deprecated`. Closed: dropped anon policies, replaced with SECURITY DEFINER RPCs (`get_application_share_by_token`, `resolve_application_share_token`, `record_application_share_view`), `service_role` policy scoped TO service_role. Migration: `20260810_security_anon_appshares_policyinv.sql`. FE switched to RPC calls.
 
-### Recent Commits (as of 2026-07-24)
+### Recent Commits (as of 2026-08-11)
 
 | Hash | Description |
 |------|-------------|
+| `...` | fix: P0 anon exposure -- SECURITY DEFINER RPCs for application_shares (#253/#254) |
+| `...` | feat: iList autosave -- per-row DB save, 2.5s debounce, draft isolation, orphan recovery |
+| `...` | feat: T260 prospect assessment -- 13 scoring columns, auto-score, collapsible UI |
+| `...` | fix: assessment section default open (#273, แบงค์ order) |
 | `4a5e7207` | fix: roster names per-occurrence (#264 r6) |
 | `efb2eeb8` | fix: enrollment counts keyed by occurrence_id (#264 true root) |
 | `f74b9ee7` | fix: CORS headers on sync-ijourney-card (#263) |
@@ -484,6 +496,7 @@ Flow: Push to main → auto-deploy to BOTH CF Pages projects.
 
 | Date | What Changed | By |
 |------|-------------|-----|
+| 2026-08-11 | W32 doc-sync: P0 security fix (#253/#254) -- anon exposure closed on application_shares + policy_investments_deprecated, replaced with SECURITY DEFINER RPCs. iList autosave (2.5s debounce, draft isolation, orphan recovery, _rev race guard). T260 prospect assessment (13 scoring columns on agent_prospects, auto-score, collapsible UI). #273 assessment default open. Updated migrations (270+), added security incident #8. | BotDev (DocCon audit) |
 | 2026-07-26 | Doc-sync: updated for #237-#264 (50 commits since last update). Added HoF, iProcess, iRecruit, recruit, auth sections. Updated routes (19), components (398), hooks (44), lib (66), edge functions (21), migrations (268), DB tables (80+), LOC (~190K). Added incidents #241/#242/#247/#264. | BotDev |
 | 2026-07-22-24 | W30 mega session: Hall of Fame engine (#240/#251/#257), iRecruit MVP + portal (#256), iProcess calendar occurrence-keyed (#264), AppHeader/BrandWordmark (#244), merged TOS+consent (#261), self-destruct SW (#241), iCompare share SSoT (#242/#247), PDF viewer (#246), self-healing auth, font optimization (#260), simulator empty-state (#262.1), CORS sync-ijourney-card (#263). 46 issues shipped. | BotDev |
 | 2026-06-22 | PRs #100 DateRollPicker, #101 calendar fix, #103 birthday 4-step merged + deployed to production (UI components, no API change) | BotDev/Admin |
@@ -510,7 +523,7 @@ Flow: Push to main → auto-deploy to BOTH CF Pages projects.
 | Custom Hooks | 44 |
 | Edge Functions | 21 |
 | Database Tables | 80+ |
-| Migrations | 268 |
+| Migrations | 270+ |
 | Utility Modules | 66 |
 | Insurance Products | 118 |
 | Premium Records | 14,100+ |

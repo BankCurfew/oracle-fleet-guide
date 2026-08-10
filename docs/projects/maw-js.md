@@ -44,6 +44,7 @@
 |----------|--------|---------|
 | `~/maw-js/maw.config.json` | JSON | Main config: host, port, ghqRoot, sessions, agents, federation |
 | `~/.maw/projects.json` | JSON | All projects + tasks |
+| `~/.maw/board.db` | SQLite (WAL) | Board task storage (replaced JSON file, #174). Monotonic ID counter in `board_meta` table prevents ID reuse after purge |
 | `~/.maw/task-logs/<taskId>.jsonl` | JSONL | Per-task activity log (append-only) |
 | `~/maw-js/loops.json` | JSON | Loop definitions + engine enabled flag |
 | `~/maw-js/loops-log.json` | JSON | Loop execution history (last 500 runs) |
@@ -100,14 +101,14 @@ Curfew-Maw-js/
 │   ├── loops.ts                    # Loop scheduler engine (400 lines)
 │   ├── projects.ts                 # Project DB (projects.json)
 │   ├── task-log.ts                 # Task activity log (.maw/task-logs/)
-│   ├── board.ts                    # GitHub board interface
+│   ├── board-db.ts                 # Board — SQLite WAL storage (~/.maw/board.db), 11 API endpoints, monotonic IDs
 │   ├── feed-tail.ts                # Live log tailer for feed.log
 │   ├── config.ts                   # maw.config.json loader
 │   ├── paths.ts, routing.ts        # Path resolution + target routing
 │   ├── auth.ts                     # Session auth + QR login
 │   ├── oracle-health.ts            # Oracle session health monitoring
 │   ├── supervisor.ts               # BobSupervisor — task tracking, stall detection, auto-nudge, completion chaining
-│   ├── autopilot.ts                # ORACLE_MAP (27 oracles), ROUTING_RULES (20 keyword sets), RESULT_CHAINS, board automation
+│   ├── autopilot.ts                # ORACLE_MAP (27 oracles), ROUTING_RULES (20 keyword sets), RESULT_CHAINS (incl. wb), board automation
 │   ├── audit.ts, maw-log.ts        # Audit logging
 │   ├── snapshot.ts                 # Fleet state snapshots
 │   ├── anti-patterns.ts            # Health checks (Zombie/Island detection)
@@ -172,6 +173,22 @@ Entry point parses `maw <cmd>` and dispatches to handlers. 50+ commands organize
 | `maw task log <#> --commit "hash msg"` | Log a commit |
 | `maw task log <#> --blocker "desc"` | Log a blocker |
 | `maw task comment <#> "msg"` | Cross-oracle comment |
+
+**Board Management (#174 — SQLite rewrite):**
+| Command | Purpose |
+|---------|---------|
+| `maw board add "title"` | Create board item (monotonic ID, never reused) |
+| `maw board done <id>` | Close item (`--oracle` for attribution) |
+| `maw board update <id> "msg"` | Update item fields |
+| `maw board reopen <id>` | Reopen closed item |
+| `maw board delete <id>` | Soft-delete item |
+| `maw board purge` | Remove deleted items (`--test` for test isolation cleanup) |
+| `maw board ls` | List board items |
+| `maw board audit` | Integrity/consistency check |
+| `maw board export` | Export board data |
+| `maw board migrate` | Migrate from JSON to SQLite (C4 semantic diff verifies all 8 fields) |
+
+`--test` flag on `add`/`ls`/`purge` enables structural test isolation. `--flag` in positional arg slot is rejected by parser guard.
 
 **Scheduling:**
 | Command | Purpose |
@@ -350,11 +367,22 @@ Backend Hono server (`src/server.ts`, 1,300+ lines) on `:3456`:
 | POST | `/api/send` | Send keys to target (local or federated) |
 | POST | `/api/federation/send` | Inbound cross-node message (HMAC) |
 
-### Board & Projects
+### Board & Projects (#174 — SQLite rewrite, 11 endpoints)
 | Method | Route | Purpose |
 |--------|-------|---------|
-| GET | `/api/board` | Fetch GitHub board data |
-| POST | `/api/board/add` | Create new board item |
+| GET | `/api/board` | List board items (SQLite WAL) |
+| POST | `/api/board/add` | Create item (monotonic ID from `board_meta`) |
+| POST | `/api/board/done` | Close item (`--oracle` attribution) |
+| POST | `/api/board/update` | Update item fields |
+| POST | `/api/board/reopen` | Reopen closed item |
+| POST | `/api/board/delete` | Soft-delete item |
+| POST | `/api/board/purge` | Remove deleted items (`--test` cleanup) |
+| GET | `/api/board/audit` | Integrity check |
+| GET | `/api/board/export` | Export board data |
+| POST | `/api/board/migrate` | JSON-to-SQLite migration (C4 semantic diff, 8 fields) |
+| GET | `/api/board/stats` | Board statistics |
+
+API returns camelCase timestamps (`createdAt`/`updatedAt`). Parser guard rejects `--flag` in positional arg slot.
 
 ### Tasks & Logs
 | Method | Route | Purpose |
@@ -385,6 +413,12 @@ Backend Hono server (`src/server.ts`, 1,300+ lines) on `:3456`:
 | GET | `/api/feed?limit=50&oracle=X` | Live event stream |
 | GET | `/api/feed/active` | Oracles active in last 5m |
 | GET | `/api/maw-log` | Message audit trail |
+
+### Account Usage & Monitoring
+| Method | Route | Purpose |
+|--------|-------|---------|
+| GET | `/api/account-usage` | Claude API usage (includes `fleet_route`, `fleet_model`, `fleet_via` fields for Nemotron/fleet routing) |
+| GET | `/api/server-monitor` | Per-account status with `stale_sec` computed server-side; retry once on JSON parse failure (mid-write race); transient fetch failure keeps last good data |
 
 ### Config & UI
 | Method | Route | Purpose |
@@ -441,7 +475,7 @@ pm2 restart maw
 ## Current State
 
 **Version**: v1.1.0
-**Status**: Production — federation + bud system stable, loop engine running, memory stack hardened
+**Status**: Production — federation + bud system stable, loop engine running, memory stack hardened, board SQLite rewrite (#174), fleet reliability hardened (#T243), Nemotron fleet routing, server-monitor resilience (#T275)
 **Files**: ~190 TypeScript source files, 60+ CLI commands
 
 ### Evolution (Key Milestones)
@@ -461,6 +495,14 @@ maw.env.sh (Oct 2025) → oracles() zsh (Mar 2026) → maw.js monolith (Mar 2026
 | #170 | Account Usage Windows — 3-card argus-style section |
 | #171 | RSS retention crisis — spawnSync, spawn limiter, double GC, mirror cache (8 commits) |
 | chip | Chip-copy-on-deliver — auto-copy file paths to inbox on send |
+| #174 | Board SQLite rewrite — WAL storage at `~/.maw/board.db`, 11 API endpoints, 10 CLI verbs, monotonic ID counter, `--test` isolation, `--oracle` attribution, C4 semantic diff migration |
+| #T243 | Fleet reliability — delivery verification (composer line check, 60-line capture, exit 1 on stuck), `maw recycle` context-drop verify, `[unverified: relay about X]` auto-tag, parser guard (`--flag` in positional rejected) |
+| #T275 | Server-monitor hardening — per-account error cards, stale banner (amber), corrupt JSON red card, Kong token map, `stale_sec` server-side, retry on parse failure, transient fetch keeps last good data |
+| T239 | QuotaWindowWidget + live active flag from credentials |
+| nemotron | Fleet route/model/via fields in account-usage, dashboard FLEET ROUTE banner, FREE badge, `nvidia/*` model regex |
+| P1-fix | False 'sent' fix — validate target exists before sendKeys |
+| CI | wb added to RESULT_CHAINS |
+| fleet-cfg | Fleet config reconciled (FA->17, FaSai->28, Data->31) |
 
 ### Earlier Architecture Changes (2026-06)
 
@@ -473,6 +515,10 @@ maw.env.sh (Oct 2025) → oracles() zsh (Mar 2026) → maw.js monolith (Mar 2026
 | **tmux 200x200** | Prevents 24x80 default pane bug |
 | **Capture 1000 lines** | Increased from 80→300→1000 for scrollback depth |
 | **28+ hooks fleet-wide** | validate-project-prefix, enforce-maw-hey, enforce-maw-loop, etc. |
+| **Delivery verification** (#T243) | Checks composer line not scrollback, 60-line capture, exit 1 on stuck |
+| **maw recycle** (#T243) | Verifies context drops after session restart |
+| **Unverified relay tag** (#T243) | Third-party claims auto-tagged `[unverified: relay about X]` |
+| **Parser guard** (#T243) | `--flag` in positional arg slot rejected across board + recycle |
 
 ### Dashboard Key Features (Jul 2026)
 
@@ -480,7 +526,9 @@ maw.env.sh (Oct 2025) → oracles() zsh (Mar 2026) → maw.js monolith (Mar 2026
 |---------|------|
 | **OracleSheet** (79K LOC) | Full agent view: transcript, comms, thinking, status, inline file chips |
 | **Inbox 2.0** (#162) | Typed message lanes (Tasks, Reports, Messages), file-centric gallery with RetryImg (iOS Safari ITP fix), read-state tracking |
-| **Account Usage** (#170) | 3-card argus-style panel showing Claude API consumption (proxied from server-monitor :3459) |
+| **Account Usage** (#170) | 3-card argus-style panel showing Claude API consumption (proxied from server-monitor :3459). T239 QuotaWindowWidget + live active flag from credentials |
+| **Fleet Route / Nemotron** | Green FLEET ROUTE banner when `fleet_route != anthropic`; FREE badge for `:free` models; status bar model regex supports `nvidia/*` patterns |
+| **Server Monitor** (#T275) | Per-account error cards (red border, ERROR badge, `n/a` instead of fake 0%). Visible stale banner (amber, minutes since probe). File-missing/corrupt JSON shows red NO ACCOUNT DATA card with error reason. Kong added to token map. Retry once on JSON parse failure (mid-write race). Transient fetch failure keeps last good data + amber connection-lost banner |
 | **File Chips** | Clickable file thumbnails/previews in message bubbles; chip-copy-on-deliver ensures files accessible from `~/.maw/inbox/chips/` |
 | **WebSocket reconnect** | Exponential backoff (1s base, 1.5x, 15s cap, jitter), background tab disconnect on visibilityState hidden |
 

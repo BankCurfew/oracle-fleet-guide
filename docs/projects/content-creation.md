@@ -17,9 +17,11 @@
 |-------|-----------|---------|
 | **Templating** | HTML5 + CSS3 | Poster layout (Kanit, Inter, Noto Sans Thai fonts) |
 | **Rendering** | Playwright CLI (headless Chromium) | HTML → PNG screenshot at exact dimensions |
-| **Image Gen (Primary)** | ChatGPT Brand Chat (trained DALL-E) | Hero images — brand-trained, 55+ approved images |
-| **Image Gen (Secondary)** | Gemini 2.5-Flash (Python `google-genai`) | Hero images — fallback, batch via `gen-batch.py` |
+| **Poster Pipeline (Primary)** | poster.js CDP | PRIMARY SOP — drives ChatGPT Brand Chat, logo composite (hash-gated) |
+| **Poster Pipeline (Fallback)** | gemini-gen.sh MQTT | Fallback when poster.js CDP unavailable |
+| **Image Gen (Secondary)** | Gemini 2.5-Flash (Python `google-genai`) | Batch generation via `gen-batch.py` |
 | **Image Gen (Tertiary)** | ComfyUI (Stable Diffusion) | Highest quality when available |
+| **Data Poster Rendering** | PIL/Pillow + raqm | Text/numbers/cards for data posters (LINE Seed Sans TH font) |
 | **Image Processing** | Sharp v0.34.5, PIL/Pillow | Resize, crop, format conversion |
 | **Card Rendering** | Puppeteer v24 | Character/persona card generation |
 | **Design System** | CSS custom properties (Pigment v8) | 165 design tokens, complete framework |
@@ -32,13 +34,16 @@
 ```
 Brief (from Wingman/BoB)
   ↓
-Designer generates hero image (ChatGPT Brand Chat → Gemini → ComfyUI)
+Method A (PRIMARY): poster.js CDP pipeline
+  - Prime brand chat → generate (atw/mb/fund) → wait → download
+  - Logo composite (canonical asset, hash-gated)
+  - Fallback: gemini-gen.sh MQTT
   ↓
-Designer builds HTML template (4 sizes with safe zones)
+Method B (Data posters): DALL-E hero + Pillow text/numbers
+  - Hero image only from DALL-E
+  - All text/numbers/cards via Pillow (LINE Seed Sans TH + raqm)
   ↓
-Playwright renders HTML → PNG (1200×630, 1080×1350, 1080×1920, 1080×1080)
-  ↓
-Self-check 7/7 (mandatory before delivery)
+Self-check 7/7 GATE-POSTER-001 (WITH EVIDENCE — CAR-2026-08-10)
   ↓
 Deliver to Wingman-Oracle → QA → Discord post
 ```
@@ -123,36 +128,59 @@ Designer-Oracle/
 
 ## Business Logic
 
-### 1. Daily Poster Pipeline
+### 1. Daily Poster Pipeline (Method A — PRIMARY SOP)
 
-**Full workflow** (from `docs/SOP.md`):
+**Primary workflow: poster.js CDP** (W32 audit, Aug 2026):
 
 ```
 Brief received (from Wingman-Oracle/ψ/writing/<series>-YYYYMMDD.md)
   ↓
-Step 1: Full Poster Image via ChatGPT Brand Chat (DALL-E)
-  - Tab: "iAgencyAIA Brand Visuals" — find by title, NOT hardcoded ID
-  - Use pre-built prompt template from output/poster-templates/<series>.txt
-  - Fill [PLACEHOLDER] fields with brief data
-  - Send via MQTT proxy (chatgpt_chat action)
-  - Poll chatgpt_get_images every 60s (DALL-E takes 1-3 min)
-  - Track image count before/after to detect new images
-  - Download by specific imageIndex (NOT latest:true — broken)
-  - Rules: --keep always, NEVER --new (brand context preserved)
+Step 1: Prime brand chat
+  - poster.js CDP is PRIMARY tool
+  - Prime the ChatGPT brand chat session with series context
   ↓
-Step 2: Verify downloaded image
-  - Check correct poster (not old cached image)
-  - Verify badge, logo, headline, data cards visible
-  - If DALL-E refused (content policy) — rephrase with neutral wording
+Step 2: Generate poster images (atw/mb/fund)
+  - Generate via poster.js CDP pipeline
+  - Wait for image completion
+  - Download generated images
   ↓
-Step 3: Deliver 1 Story IG (1080×1920) to Wingman
+Step 3: Logo composite
+  - Apply canonical logo asset (hash-gated — ensures correct, unmodified logo)
+  - Single logo stamp only (verified via zoom crop 200%)
+  ↓
+Step 4: Self-check 7/7 (GATE-POSTER-001 — WITH EVIDENCE)
+  - All 7 items use METHOD format (not question format)
+  - Item #4: zoom crop 200% proof of single logo stamp required
+  - Enforcement: WITH EVIDENCE per CAR-2026-08-10 (not mental tick)
+  ↓
+Step 5: Deliver 1 Story IG (1080×1920) to Wingman
   - Default: 1 size only (แบงค์ directive 2026-06-19)
   - Multiple sizes only when explicitly requested
   ↓
-Step 4: cc Wingman + cc BoB (structured format)
+Step 6: cc Wingman + cc BoB (structured format)
 ```
 
+**Fallback**: gemini-gen.sh MQTT pipeline when poster.js CDP is unavailable.
+
 **Legacy pipeline** (HTML template → Playwright render → 4 sizes) still available in `ψ/writing/posters/gen-*.py` scripts for cases where DALL-E fails or custom layouts are needed.
+
+### 1b. Data Poster Pipeline
+
+**For data-heavy posters** (established after Viral 10 โรค v1-v7 iteration):
+
+```
+DALL-E generates hero image ONLY (no text baked in)
+  ↓
+All text, numbers, and data cards rendered via Pillow
+  - Font: LINE Seed Sans TH
+  - Font rendering engine: raqm (complex script shaping)
+  ↓
+Composite hero + text layers → final PNG
+```
+
+- DALL-E = hero/background image only — never text or numbers
+- All textual/numeric content is programmatically rendered via Pillow for pixel-perfect accuracy
+- Avoids DALL-E text rendering issues (garbled Thai, wrong numbers)
 
 ### 2. Rendering Pipeline (Playwright)
 
@@ -239,12 +267,14 @@ for (const p of posters) {
 
 | Priority | Tool | When | Notes |
 |----------|------|------|-------|
-| 1 (Primary) | ChatGPT Brand Chat | Default | Trained DALL-E session, 55+ approved images |
-| 2 (Secondary) | Gemini 2.5-Flash | Fallback | `gen-batch.py`, Python `google-genai` |
-| 3 (Tertiary) | ComfyUI | Highest quality | When available on Windows-side |
+| 1 (Primary) | poster.js CDP (ChatGPT Brand Chat) | Default | PRIMARY SOP — poster.js drives CDP pipeline, logo composite hash-gated |
+| 2 (Fallback) | gemini-gen.sh MQTT | poster.js unavailable | Gemini via MQTT proxy |
+| 3 (Secondary) | Gemini 2.5-Flash | Batch generation | `gen-batch.py`, Python `google-genai` |
+| 4 (Tertiary) | ComfyUI | Highest quality | When available on Windows-side |
+| Data posters | DALL-E (hero only) + Pillow | Data-heavy visuals | Hero image from DALL-E, all text/numbers/cards via Pillow (LINE Seed Sans TH + raqm) |
 | Never | CSS gradients only | — | Not acceptable as hero |
 | Never | Stock photos | — | No generic stock |
-| Never | AI with baked text | — | All text is HTML overlay |
+| Never | AI with baked text | — | All text is HTML overlay (or Pillow for data posters) |
 
 ### 6. Safe Zone Specifications (Per Format)
 
@@ -336,8 +366,9 @@ No dedicated API server. Designer-Oracle operates through:
 | Integration | Method | Purpose |
 |-------------|--------|---------|
 | Playwright CLI | `pw-cli.sh` commands | HTML → PNG rendering |
+| poster.js CDP | CDP automation | PRIMARY poster pipeline (brand chat + logo composite) |
+| gemini-gen.sh MQTT | MQTT proxy | Fallback poster pipeline |
 | Gemini API | Python `google-genai` | Image generation (batch) |
-| ChatGPT Brand Chat | Playwright proxy (`chatgpt-gen.sh`) | Primary image generation |
 | oracle-v2 MCP | `/talk-to`, `oracle_search` | Cross-oracle communication |
 | Supabase MCP | Database queries | Project `hztjrqlxrdsmxbkxojqg` |
 
@@ -362,10 +393,11 @@ No dedicated API server. Designer-Oracle operates through:
 
 ### What's Working
 
-- Daily poster pipeline (Brief → Hero → HTML → 4 sizes → QA → Deliver)
+- Daily poster pipeline via poster.js CDP (PRIMARY SOP: prime brand chat → generate → logo composite → self-check 7/7 → deliver)
+- Data poster pipeline: DALL-E hero + Pillow text/number rendering (LINE Seed Sans TH + raqm)
 - ChatGPT Brand Chat as primary image generator (55+ approved images)
 - Pigment v8 design system with 165 tokens (v2.4.0 CSS framework)
-- 7-point self-check before delivery
+- GATE-POSTER-001 self-check: 7 items, METHOD format, WITH EVIDENCE enforcement (CAR-2026-08-10)
 - 300+ poster sets generated (1200+ individual PNGs)
 - 7 active series: ATW, Market Brief, Fund Holdings, Fund Insights, Viral, Health & Wealth, Breaking
 - 8 pre-built prompt templates for Wingman self-service (`output/poster-templates/`)
@@ -380,8 +412,11 @@ No dedicated API server. Designer-Oracle operates through:
 - **ComfyUI availability** depends on Windows-side GPU (not always accessible from WSL)
 - **4.1GB repo size** (heavy with rendered PNGs) — may need LFS or archival strategy
 
-### Recent Work (as of 2026-06-21)
+### Recent Work (as of 2026-08-11, W32 audit)
 
+- **poster.js CDP promoted to PRIMARY SOP** — full pipeline: prime brand chat → generate atw/mb/fund → wait → download → logo composite (canonical asset, hash-gated) → self-check 7/7 → deliver. Fallback: gemini-gen.sh MQTT
+- **GATE-POSTER-001 updated** — self-check now 7 items in METHOD format (not question), item #4 requires zoom crop 200% proof of single logo stamp, enforcement changed to WITH EVIDENCE (CAR-2026-08-10)
+- **Data poster pipeline established** — DALL-E = hero image only, all text/numbers/cards via Pillow (LINE Seed Sans TH + raqm font rendering). Born from Viral 10 โรค v1-v7 iteration
 - 8 pre-built poster prompt templates created ([office] #151)
 - FA Tools Profile UX wireframe ([fa-tools] #153)
 - Daily poster production: ATW, MB, Fund Holdings, Fund Insights, Viral, H&W EP.1-2
