@@ -270,11 +270,19 @@ Writer serves as Editor for Wingman-Oracle's social media content (ATW, MarketBr
 - WealthBanks: 40+ blog articles live, 29 product pages, 5 calculator tools
 - PetzDeals: 15+ guides live, Daily Growth Engine #22 running, campaign calendar automated
 - Wingman Editor review pipeline: 20+ reviews per session, banned-term grep pattern
-- SEO improve queue methodology (existing articles pushed toward page 1)
+- SEO improve queue methodology complete (T180); SEO gate glob widened 86->91 pages
 - Per-gender IRR data across all 6 AIA annuity/savings products
 - Social security cluster complete (5 articles: hub + ม.33/38/39/40)
 
-### Recent Work (Jul 2026)
+### Recent Work (Jul-Aug 2026)
+- **T104**: SEO Recovery Campaign — 6+ WealthBanks articles rewritten with FAQ expansion + variant keywords for rank recovery (irr-explained, life-insurance-types, surrender-value, financial-triangle, tax-deductions, hospital-network)
+- **T177**: Fund universe 10/20 articles live + FAQ-19 done; held at 10/20 (Writer reassigned to T104 SEO urgent)
+- **T180**: SEO improve queue complete (irr-explained #31->page 1, tax-2569 27,100vol #64->top10)
+- **SEO gate**: glob widened 86->91 pages; CONTENT-MASTERY-PLAYBOOK v1.1.0 §0 (Topic Selection by DA) applied to 3 articles
+- **Hospital network**: SEO R1 complete — keyword-first title rewrite + 4 inbound links
+- **#224**: iTraining slides T5-6 slide deck created with render screenshots for iAgencyAIA training materials
+- **#210**: Elite Advisor content went live
+- **PetzDeals**: daily content production continued then paused (Writer reassigned to T104 SEO urgent); articles updated with faqItems + 8.8 campaign cross-links
 - **T142**: Em-dash ban site-wide (69 files, 40-agent workflow, grep=0)
 - **T168**: Health Happy coverage+exclusions article (16 vs 21 enrichment, safe framing)
 - **T170**: Cashless qualified wording sweep (8 absolute claims replaced)
@@ -282,7 +290,6 @@ Writer serves as Editor for Wingman-Oracle's social media content (ATW, MarketBr
 - **T174**: "ทำไมต้องทำประกันสุขภาพ" pillar (sourced: 10.8% medical inflation, 3-4x private vs public)
 - **T175**: สามเหลี่ยมการเงิน pillar + financial planning cluster (720/mo SD13)
 - **T176**: AIA Elite Income Prestige (Unit-Linked, GATE-WB-004 compliant)
-- **T180**: SEO improve queue (irr-explained #31->page 1, tax-2569 27,100vol #64->top10)
 - **#46**: Investment platforms (Finnomena 28 portfolios, Phillip Smart Wealth, StashAway ERAA)
 - **#44/#45**: Group insurance guide + agent career guide
 - **#50**: Product audit (29 pages) + 4-thin expansion (infinite-care, health-cancer, ai-rcc, hb)
@@ -295,12 +302,13 @@ Writer serves as Editor for Wingman-Oracle's social media content (ATW, MarketBr
 
 ### Known Issues
 - Creative fiction (dark/) gitignored, stored in OneDrive + archive
-- Hospital room article: data ready (22 Samitivej room types), awaiting slot
+- Hospital network article: SEO R1 complete (keyword-first title rewrite + 4 inbound links), pending further SEO rounds
 - #47 social content model: queued
 - #50 orphan products (9): LOW priority
-- T177 AIA fund universe (20 funds): queued
+- T177 AIA fund universe: 10/20 live + FAQ-19 done, held at 10/20 (Writer on T104 SEO recovery)
 - T178 ประกันชีวิตลดหย่อนภาษี: queued
 - T179 content backlog (60 keywords, Phase 1 = 6 easy wins): queued
+- PetzDeals daily content: paused (Writer reassigned to T104 SEO urgent)
 
 ### Lessons Learned (Memory)
 - **Cover-gate push order**: never push article before cover is in-repo (repeated 3x before learned)

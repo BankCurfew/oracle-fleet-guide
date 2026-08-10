@@ -42,12 +42,25 @@ Do not duplicate content here. Refer to the canonical doc for operational detail
 | Loop | Schedule | Action |
 |------|----------|--------|
 | Apify sync | Daily (manual trigger) | 7 categories x 10 items, products.json update |
-| GA4/GSC/PSI | Daily | Analytics pulls for both sites |
+| GA4 pull | Daily | GA4 analytics pull operational. Property ID hardcoded with assertion on mismatch (same pattern as wealth-bank). |
+| GSC pull | Daily | GSC analytics pull operational. |
 | Auto-index | Daily | Google Indexing API submission for new URLs |
 
 ## Key Numbers
 
-- Products: ~844 (fluctuates with sync + prune)
+- Products: **1,063+** (crossed 1,000 milestone on Aug 2 2026 at 1,003). Daily Apify syncs adding 20-35 products/day.
 - Blog articles: 21
 - Deal pages: 7 (payday-25, 7.7, 8.8, today, index, etc.)
-- Sitemap URLs: ~900 (products + articles + category + deals)
+- Sitemap URLs: ~1,100+ (products + articles + category + deals)
+
+## Active Campaigns
+
+- **8.8 Campaign** (Aug 2026): Cross-links added to best-cat-food, best-dog-food, best-dog-treats articles. faqItems (FAQ structured data) added to content articles for SERP rich results.
+
+## Content Updates (W32, Jul-Aug 2026)
+
+- Articles updated with FAQ structured data (`faqItems`): best-cat-food, best-dog-food, best-dog-treats.
+
+## Security
+
+- Removed hardcoded Google API key from public docs (`d31394a`, Aug 2026).
