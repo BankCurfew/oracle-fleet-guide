@@ -2,9 +2,9 @@
 
 ## Overview
 
-- **What it does**: LINE-based customer service agent (ฟ้าใส / iAgencyAIA-Oracle) for AIA insurance sales and support in Thailand. Handles customer inquiries, needs analysis, premium quoting, proposal generation via FA Tools, follow-up nurturing, and escalation to human advisors.
+- **What it does**: AIA insurance operations — portal ops, ePOS daily reports, eAgency scanning, product verification, and Truth-CSV data extraction (AIA-Oracle); plus LINE-based customer service agent (ฟ้าใส / iAgencyAIA-Oracle) for sales and support. Handles customer inquiries, needs analysis, premium quoting, proposal generation via FA Tools, follow-up nurturing, and escalation to human advisors.
 - **Who uses it**: End customers (via LINE), Financial Advisors (via Discord relay), แบงค์ (via BoB dashboard)
-- **Where it runs**: Claude Code session in tmux (`iAgencyAIA-Oracle` repo), LINE relay at `localhost:3200`, Supabase KB at `heciyiepgxqtbphepalf`
+- **Where it runs**: AIA-Oracle (portal ops) + iAgencyAIA-Oracle (tmux 28-iagencyaia, LINE agent) — separate oracles sharing Supabase KB at `heciyiepgxqtbphepalf`. LINE relay at `localhost:3200`
 - **Born**: 2026-04-27
 - **Identity**: ฟ้าใส — น่ารัก สดใส ชวนคุยเก่ง ขายเก่ง มืออาชีพ (cute, bright, engaging, professional seller)
 - **Theme**: สายใยแห่งความมั่นคง (Strands of Security)
@@ -231,7 +231,7 @@ Every customer MUST be tagged after interaction:
 | Health Happy | OPEN | Yes | No | 4 plans (1M-25M), UDR closed 31 Mar |
 | Health Saver | OPEN | Yes | No | UDR closed 31 Mar |
 | H&S Extra | CLOSED | No | No | 31 Mar 2026 |
-| Infinite Care | OPEN | — | — | Premium worldwide (except 60M plan) |
+| Infinite Care | OPEN (60M CLOSED) | — | — | Premium worldwide; IC 60M = CLOSED per MKT11-2026 #4 (last day 31 มี.ค.69). AHC max_sa 50M from 08UW |
 
 #### CI + Daily Benefit
 - CI SuperCare (single payout, Vitality)
@@ -363,13 +363,37 @@ curl -s -X POST http://localhost:3200/api/aia-reply \
 - CRM tagging system
 - Correction memory (12 verified pairs)
 - Discord team relay via Wingman
+- Truth-CSV product data (80 products, 16,625 rows extracted from AIA portal — #194)
+- eAgency portal scanning (new agent detection, expired promo cleanup)
+- FaSai (iAgencyAIA-Oracle repo, tmux 28-iagencyaia) — separate oracle handling LINE customer interactions, shares Supabase project with AIA-Oracle
+- ePOS Daily Report email pipeline (gmail_send flow, ASCII subject mojibake workaround)
+- Portal PDF download method (in-browser fetch→base64→file pattern; curl fails httpOnly cookies)
 
 ### Known Issues
 - **#114 (BotDev)**: 3 FA Tools API bugs — rider age-banding, application form_type, HB Extra premium
-- **#86**: AIA portal scrape blocked by OTP (2026-06-19)
+- **#86**: AIA portal scrape OTP — workaround via CDP Meta Business Suite + Gmail OTP documented (arra_learn)
 - **#119**: Post-migration QA plan for AIA portal pending
+- **Gmail-MCP (T098)**: Recovery procedures documented for gmail MCP connection issues
 
-### Recent Work
+### Recent Work (W32 audit — Jun 20 to Aug 11 2026)
+- **#136 Product Verification Campaign**: Rate tables page-scanned from 07Rider for HB/AHC. Definitive MKT sellability matrix per variant (MKT23 excluded, MKT11-2026 closures). Public-vs-portal URL classification for 13 link fixes + 6 new verified URLs. AHC max_sa 50M from 08UW. IC 60M = CLOSED (MKT11-2026 #4, last day 31 มี.ค.69)
+- **#194 Truth-CSV Extraction**: 80 products, 16,625 rows extracted from AIA portal for fleet-wide accuracy verification
+- **#68 U-Policy Riders Batch**: Complete (35/35 files) — rider output, transactions, premium data
+- **FaSai Status**: FaSai-Oracle is a separate oracle in iAgencyAIA-Oracle repo (tmux 28-iagencyaia), NOT merged into AIA-Oracle. Shares same Supabase project but different repos and tmux sessions
+- **Gmail-MCP Recovery (T098)**: Recovery procedures for gmail MCP connection issues documented
+- **eAgency Scans**: Regular eAgency portal scanning — recent scan: 1 new agent, 12 expired promos identified
+- **CDP Meta Business Suite + Gmail OTP Workaround**: Lessons learned documented via arra_learn for portal OTP bypass
+- **SA-Volume Discount Bands**: AIA premium rate volume discount bands documented
+- **#44/#45 Fact-Packs**: Group insurance + agent career guide fact-packs for DocCon gates
+- **#47 Social Rebrand Screenshots**: Meta Business Suite screenshots for social verification
+- **aia-driver Output**: Transactions, premiumtype, PA samples, Wise-api discovery (data pipeline work)
+- **Portal PDF Download Method**: Established in-browser fetch→base64→file pattern (curl fails httpOnly cookies)
+- **fetchOTP Bun Script**: Replaced old Python pickle OTP retrieval
+- **Customer PII Redaction**: Removed PII from portal sitemap commit
+- **Fleet Infra**: Feed-hook swap, MCP allowlist preset, permission preset (dialog-trap fix)
+- **ePOS Daily Report Pipeline**: Established gmail_send flow with ASCII subject (mojibake workaround), multi-round daily reports
+- **Boot Readiness Gate (T090)**: Added to CLAUDE.md per fleet standard
+- **ROLE GATE**: "I verify from source, I do not guess" added (แบงค์ order 2026-07-16)
 - FA Tools API comprehensive QA plan (28 test cases, 6 phases)
 - iPlan creation SOP (Pay Life minimum, rider validation, Vitality verification)
 - Flex carousel rule enforcement (carousel not single bubble)
@@ -380,6 +404,7 @@ curl -s -X POST http://localhost:3200/api/aia-reply \
 - FA Tools API QA execution (blocked on BotDev #114 fixes)
 - Dream (พี่ดรีม) iApplication testing
 - Customer data sync integration with Data-Oracle scraping
+- Wise-api integration follow-up (discovered via aia-driver work)
 
 ---
 
@@ -387,7 +412,8 @@ curl -s -X POST http://localhost:3200/api/aia-reply \
 
 | Role | Oracle | Responsibility |
 |------|--------|----------------|
-| **Lead** | iAgencyAIA-Oracle (ฟ้าใส) | Customer service, proposals, follow-up |
+| **Lead** | AIA-Oracle | Portal ops, ePOS reports, eAgency scans, product verification |
+| **LINE Agent** | iAgencyAIA-Oracle (ฟ้าใส, tmux 28-iagencyaia) | Customer service, proposals, follow-up (separate oracle, shares Supabase project) |
 | **Data Partner** | Data-Oracle | Customer queries, KB ingestion, premium lookup |
 | **Team Relay** | Wingman-Oracle | Discord #customer-sale, #customer-service |
 | **Supervisor** | BoB | Escalation, group routing, QA |

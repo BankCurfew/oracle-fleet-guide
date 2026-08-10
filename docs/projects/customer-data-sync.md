@@ -87,14 +87,35 @@ Data-Oracle/
 │   ├── kb-cleanup-audit-fixes.py # KB maintenance
 │   │
 │   ├── export-training-v3-round7.py  # Fine-tuning data export (31.5K)
-│   └── extract-training-data.py      # Training data extraction (14.0K)
+│   ├── extract-training-data.py      # Training data extraction (14.0K)
+│   └── google-stack-setup.py         # Automated GTM+GA4+GSC+IndexNow setup (259 lines)
+│
+├── output/                       # Generated reports
+│   ├── wb-article-register-*.html    # Article Register HTML reports (v3.1 current)
+│   └── wb-daily-intel-*.html         # Daily Intel HTML dashboards (20 reports, Jul 21 — Aug 10)
 │
 ├── data/                         # Data files
 │   ├── kb/                       # KB chunk files (JSON)
 │   ├── training/                 # Training data (JSONL, 1M-3.9M lines)
 │   ├── premium-tables/           # Premium lookup files
-│   ├── aia-promotions-2026.json  # Active promo database (41.5K)
+│   ├── aia-promotions-2026.json  # Active promo database (~14 active)
 │   └── migrations/               # SQL migration files
+│
+├── wealth-bank/scripts/          # WealthBanks analytics pipelines
+│   ├── pull-ga4.py               # GA4 daily page views pull (104 lines)
+│   ├── pull-gsc.py               # GSC daily impressions pull (103 lines)
+│   ├── pull-psi.py               # PSI score pull (153 lines)
+│   └── generate-article-register.py  # Article Register generator (353 lines)
+│
+├── wealth-bank/data/analytics/   # Daily analytics JSON pulls
+│   ├── ga4-*.json                # 13 GA4 daily files
+│   ├── gsc-*.json                # 27 GSC daily files
+│   ├── psi-*.json                # 25 PSI daily files
+│   ├── article-register.json     # Article register data
+│   └── .index-state.json         # Index state tracking
+│
+├── wealth-bank/src/data/generated/funds/  # Fund NAV JSONs
+│   └── *.json                    # 24 fund NAV files (22 AIA funds)
 │
 ├── migrations/                   # Supabase SQL migrations
 │   ├── kb_bot_search.sql         # KB search RPC with source boosting
@@ -237,7 +258,7 @@ Verify: 0 NULLs, 0 orphans, 0 dupes
 
 ### Pipeline 6: Promo Lifecycle
 
-**Storage**: `data/aia-promotions-2026.json` (41.5K, 33 active promos)
+**Storage**: `data/aia-promotions-2026.json` (~14 active promos, down from 33 after Jun 30 expiry wave + status normalization: `archived` → `expired`)
 
 | Category | Type | Visibility |
 |----------|------|-----------|
@@ -252,6 +273,73 @@ Verify: 0 NULLs, 0 orphans, 0 dupes
 5. Superseded → old promo archived, new promo linked
 
 **CRITICAL**: Never show internal codes (MKT26, ECM02, PT07) to customers. iAgencyAIA gets `customer_facing_summary` only.
+
+### Pipeline 7: Daily Analytics Pulls (GA4 + GSC + PSI)
+
+**Scripts** (in `wealth-bank/scripts/`):
+| Script | Lines | Purpose |
+|--------|-------|---------|
+| `pull-ga4.py` | 104 | Google Analytics 4 page views |
+| `pull-gsc.py` | 103 | Google Search Console impressions/clicks/position |
+| `pull-psi.py` | 153 | PageSpeed Insights scores |
+
+**Data**: `wealth-bank/data/analytics/` — 13 GA4, 27 GSC, 25 PSI daily JSON files
+
+**Features**:
+- Retry with exponential backoff (3 attempts, 5/15/30s delay)
+- Property ID hardcoded with assertion (prevents cross-contamination)
+- PSI skip-when-fresh (<3 days old)
+
+**Known issue**: PSI API 429 rate limit on day 5+ — pending Admin key rotation
+
+**Data integrity**: 12 contaminated GA4 files quarantined to `quarantine-property-mismatch/`
+
+**Operational since**: Jul 21, 2026 (GA4+GSC); Jul 26, 2026 (PSI)
+
+### Pipeline 8: Article Register (#70)
+
+**Script**: `wealth-bank/scripts/generate-article-register.py` (353 lines)
+**Output**: `Data-Oracle/output/wb-article-register-*.html` (v3.1 current)
+
+**Capability**: Per-article Google Search Console analytics for 57 WealthBanks blog articles.
+
+**Evolution**:
+| Version | What Changed |
+|---------|-------------|
+| v1 | Base stock view — article list with basic metrics |
+| v2 | Added `index_status` + URL inspection from GSC API |
+| v3 | Added `query_type` column — branded vs generic query split |
+| v3.1 | Authority baseline DA=1, SERP floor DA per gap, phase 2 coverage gaps |
+
+**Output**: HTML reports generated for BoB review.
+
+**State**: Awaiting BoB → แบงค์ approval to wire into daily report Section F.
+
+### Pipeline 9: Daily Intel Report
+
+**Output**: `Data-Oracle/output/wb-daily-intel-*.html` (20 reports, Jul 21 — Aug 10)
+
+**Aggregates**:
+- GA4 pageviews (from Pipeline 7)
+- GSC impressions/clicks/position (from Pipeline 7)
+- PSI scores (from Pipeline 7)
+- T177 fund NAV freshness (from Pipeline 10)
+- Promo expiry status (from Pipeline 6)
+- Promo campaign tracking (e.g. 8.8 campaign)
+
+**Format**: HTML dashboard for แบงค์ review.
+
+### Pipeline 10: Fund NAV Operations (T177)
+
+**Data**: `wealth-bank/src/data/generated/funds/` — 24 fund JSON files (22 AIA funds)
+**Source**: aiaim.co.th `fundList.json` endpoint
+
+**Operations**:
+- Periodic NAV refresh from AIA Investment Manager
+- JSON file regeneration for 24 funds
+- Freshness check (T030) integrated into Daily Intel report
+
+**Known issue**: 2 non-AIA funds (`ES-GF-A`, `KF-CINCOME-A`) need different NAV source — not yet automated.
 
 ### Premium Lookup Rules
 
@@ -450,22 +538,42 @@ Via `maw loop add` (persistent, dashboard-visible):
 ## Current State
 
 ### What's Working
-- KB pipeline: 10,732 chunks ingested, 100% embedded, searchable
+- KB pipeline: 10,000+ chunks ingested, 100% embedded, searchable
 - Premium lookup: 14,728 product rows (26 families) serving FA Tools + iAgencyAIA bot
 - Customer data sync: 937 active customers (filtered from 1,382 raw) ready for import
 - Investment fund data: 243 UL policies, 603 fund allocations in Supabase (QA verified)
-- Promo tracking: 23 active promos with lifecycle management
+- Promo tracking: ~14 active promos with lifecycle management (down from 33 after Jun 30 expiry wave)
 - BGE-M3 embedding: batch pipeline stable with NaN validation
 - Cross-oracle data serving: P0 responses to iAgencyAIA operational
+- Daily analytics pulls: GA4+GSC operational since Jul 21, PSI since Jul 26 (Pipeline 7)
+- Article Register v3.1: 57 WealthBanks articles tracked with GSC analytics, branded/generic query split, authority baseline DA=1 (#70, Pipeline 8)
+- Daily Intel reports: 20 HTML dashboards generated Jul 21 — Aug 10, aggregating GA4+GSC+PSI+NAV+promo status (Pipeline 9)
+- Fund NAV T177: 22 AIA fund NAVs refreshed periodically + 24 fund JSON files regenerated (Pipeline 10)
+- Rider display (#226): rider section under each policy in Data-Oracle dashboard, policies parser handles Life/PA type field
+- Customer report generator (#213): family mode, customer mode, JSON cache, validate-before-replace gate, published to Supabase `report_index` (20 records)
+- Storage (#221): completed
 
 ### Known Issues
 - **UNIQUE constraint pending**: `iagency_policies.policy_number` migration ready but Supabase MCP OAuth not authorized
 - **269 oversized chunks**: Normalization Phase 2 pending (>2000 tokens)
 - **66 massive PDF form chunks**: Strategic decision needed (split vs keep)
-- **Promo expiry window**: 8 promos expire Jun 30 — 7-day alert due Jun 23
 - **Embedding service**: Ollama/BGE-M3 local availability intermittent after HQ migration
+- **PSI API 429 rate limit**: PageSpeed Insights returns 429 on day 5+ of consecutive pulls — pending Admin key rotation
+- **Non-AIA fund NAV source**: 2 funds (`ES-GF-A`, `KF-CINCOME-A`) need different NAV source than aiaim.co.th — not yet automated
+- **Article Register approval**: v3.1 awaiting BoB → แบงค์ approval to wire into daily report Section F
 
-### Recent Work (2026-06-18 to 2026-06-21)
+### Recent Work (2026-06-20 to 2026-08-11, W32 Audit)
+- **Daily Analytics Pulls** (NEW Pipeline 7): 3 scripts (`pull-ga4.py`, `pull-gsc.py`, `pull-psi.py`) with retry/backoff, property hardcode, PSI skip-when-fresh. 12 contaminated GA4 files quarantined. Operational since Jul 21
+- **Article Register v1-v3.1** (#70, NEW Pipeline 8): Per-article GSC analytics for 57 WealthBanks articles — v1 base stock → v2 index_status + URL inspection → v3 branded/generic query_type → v3.1 authority baseline DA=1, SERP floor DA per gap, phase 2 coverage gaps. HTML reports for BoB review. Awaiting approval for daily report Section F
+- **Daily Intel Report** (NEW Pipeline 9): 20 HTML dashboards (Jul 21 — Aug 10) aggregating GA4+GSC+PSI+NAV freshness+promo expiry. Campaign tracking (8.8 campaign)
+- **Fund NAV T177** (NEW Pipeline 10): 22 AIA fund NAVs refreshed periodically from aiaim.co.th, 24 fund JSON files regenerated. Freshness check (T030) integrated into Daily Intel
+- **#226 Rider Section**: Rider table display (FA Tools navy header style) + unit annotations. Policies parser updated for Life/PA type field in new format. Safety rule: PA vs RCC never sum, use separate category keys
+- **#213 Customer Report Generator**: Family mode, customer mode, JSON cache, validate-before-replace gate. Fixes: NaN bug for TRAD-only (hide UL sections), sub-1M M() format shows full number instead of "0.X ล้าน", PA disclaimer, FA Tools line removed from chart labels. Published to Supabase `report_index` (20 records)
+- **#221 Storage**: Storage task completed
+- **Google Stack Setup**: Automated GTM+GA4+GSC+IndexNow setup script (`scripts/google-stack-setup.py`, 259 lines)
+- **Promo Lifecycle**: 9 promos expired Jun 30 (33→~14 active). Status normalization: `archived` → `expired`
+
+### Prior Work (2026-06-18 to 2026-06-21)
 - Customer Data Sync ETL: bulk import script + plan code decoder (pay_term/coverage_term)
 - Investment fund ingestion: 603 fund rows from ePOS, Thai date/number parsing
 - QA fixes: duplicate cleanup (7 records), updated_at on PATCH, CG/inactive filter (#126)

@@ -4,7 +4,7 @@
 
 ## Overview
 
-- **What it does**: Policy-driven security operations framework — vault management, credential distribution, secrets scanning, PDPA compliance, RLS enforcement, and incident response for the entire Oracle fleet
+- **What it does**: Policy-driven security operations framework — vault management, credential distribution, secrets scanning, PDPA compliance, RLS enforcement, anon surface probing, and incident response for the entire Oracle fleet
 - **Who uses it**: All 27+ oracles (credential consumers), BoB (supervisor), Admin (infrastructure), แบงค์ (owner)
 - **Where it runs**: `/home/curfew/repos/github.com/BankCurfew/Security-Oracle` — documentation-heavy, no compiled code; vault at `~/.oracle/security/vault.enc`
 
@@ -19,10 +19,11 @@ Security-Oracle is the Chief Information Security Officer (CISO) & Data Guardian
 | Credential Storage | GPG (AES256) | Encrypted vault (`vault.enc`) |
 | Access Control | Bash script ACL matrix | Role-based vault access per oracle per category |
 | Audit Logging | Append-only text logs | Immutable access trail |
-| Secrets Scanning | grep + git-filter-repo | Daily repo scans + historical secret removal |
+| Secrets Scanning | gitleaks + grep | Daily 82-repo scans (dynamic discovery) |
+| Anon Surface Probing | Bash + Supabase REST | Weekly probe of what anon key can actually read |
 | Database Security | Supabase Row Level Security (RLS) | Row-based access control on customer data |
 | Communication | `maw hey`, `/talk-to` MCP | Oracle-to-oracle messaging with audit trails |
-| Browser Fallback | Playwright | Portal access when API unavailable |
+| Browser Fallback | Playwright (pw-cli.sh) | Portal access when API unavailable |
 | Identity/Memory | oracle-v2 MCP | FTS5 + vector knowledge sharing |
 
 ### Vault Architecture
@@ -33,55 +34,59 @@ Security-Oracle is the Chief Information Security Officer (CISO) & Data Guardian
 ├── .vault-pass            # Passphrase (chmod 600)
 ├── vault-access.sh        # CLI tool for lookup, audit, rotation
 ├── supabase-token-rotate.sh  # Automated OAuth refresh (24h cycle)
+├── supabase-*.env         # Per-project credential files (31 vault files)
 └── *.bak                  # Timestamped backups (before every edit)
 ```
 
-### Supabase Projects Managed (3)
+### Supabase Projects Managed (6)
 
-| Project ID | Name | RLS Status | Notes |
-|-----------|------|-----------|-------|
-| `tekvqbbjsfncwbdsvrfw` | PlanYourFuturePro | 76/76 tables verified | BankCurfew org, MCP access |
-| `heciyiepgxqtbphepalf` | AIA Knowledge Base | Verified | iAgencyAIA org, no direct MCP |
-| `hztjrqlxrdsmxbkxojqg` | iAgencyAIA FA Tools | Verified | iAgencyAIA org, no direct MCP |
+| Project ID | Name | Status | RLS | Notes |
+|-----------|------|--------|-----|-------|
+| `hztjrqlxrdsmxbkxojqg` | FA Tools | ACTIVE | 124/124 tables | iAgencyAIA org, no direct MCP. Primary focus. |
+| `heciyiepgxqtbphepalf` | AIA Knowledge Base | ACTIVE | 21/21, 0 anon policies | iAgencyAIA org, no direct MCP, internal API only |
+| `xljanizifyclgqinsxxd` | iJourney | ACTIVE | 22 tables | Quiz app, 5 anon policies (all properly scoped) |
+| `tekvqbbjsfncwbdsvrfw` | PlanYourFuturePro | INACTIVE | 76/76 verified | BankCurfew org, MCP access |
+| `odgdgelhvsxtvagyaxtm` | petdeals | INACTIVE | — | No anon key in vault |
+| `cdegdqjmcbahwptjzolu` | BankCurfew Project | INACTIVE | — | No anon key in vault |
 
 ## Code Structure
 
 ```
 Security-Oracle/
-├── CLAUDE.md                          # Identity, 10 commandments, scope (14.4K)
-├── SOP.md                            # 10-section operational procedures (18.6K)
+├── CLAUDE.md                          # Identity, Role Gate, 10 commandments (incl. evidence-matching)
+├── SOP.md                            # 10-section operational procedures
 ├── .mcp.json                         # MCP servers (oracle-v2, playwright, gmail)
-├── .claude/settings.json             # 6 hook stages enforcing security protocols
+├── .claude/settings.json             # Hook stages enforcing security protocols
 │
 ├── audits/
-│   └── 2026-03-19/
-│       ├── SECURITY-AUDIT.md         # Family-wide security posture (18 repos, 368 files)
-│       ├── FULL-SECURITY-AUDIT.md    # Detailed per-repo analysis
-│       └── REMEDIATION-STATUS.md     # Active remediation tracking
+│   ├── anon-surface-probe.sh         # Weekly REST probe — tests what anon can actually read
+│   ├── anon-surface-allowlist.json   # 34 by-design tables with falsifiable assertions
+│   ├── .anon-surface-state.json      # Change detection state (previous probe)
+│   ├── anon-surface-report-*.md      # Per-run probe reports
+│   └── 2026-03-19/                   # Original family-wide audit (18 repos, 368 files)
+│
+├── memory/                           # Claude auto-memory (MEMORY.md index)
 │
 └── ψ/                                # Oracle memory
     ├── inbox/
     │   ├── focus.md                  # Current state (monitoring/working/blocked)
-    │   ├── onboard-checklist.md      # Session startup checklist
-    │   └── handoff/                  # 5 session handoffs
-    ├── memory/
-    │   ├── resonance/                # Identity (security-oracle.md, oracle.md)
-    │   ├── learnings/                # 20+ operational lessons
-    │   ├── logs/activity.log         # Append-only session tracking
-    │   ├── retrospectives/           # Session retros by date
-    │   └── practice/                 # Bampenpien sessions
-    └── ...
+    │   └── handoff/                  # Session handoffs
+    └── memory/
+        ├── resonance/                # Identity
+        ├── learnings/                # 20+ operational lessons
+        ├── logs/activity.log         # Append-only session tracking
+        └── retrospectives/           # Session retros by date
 ```
 
 ### Key Files
 
-| File | Size | Purpose |
-|------|------|---------|
-| `CLAUDE.md` | 14.4K | Identity, philosophy, 10 commandments, compliance checklists |
-| `SOP.md` | 18.6K | 10 sections: vault, delivery, rotation, scans, audit, incident, PDPA, review, boot, tech ref |
-| `audits/2026-03-19/SECURITY-AUDIT.md` | 15.5K | Family security posture (18 repos scored, avg 7.1/10) |
-| `audits/2026-03-19/REMEDIATION-STATUS.md` | 6.4K | Remediation tracking for audit findings |
-| `ψ/memory/learnings/` | 20+ files | Incident lessons (vault bugs, JWT redaction, ACL verification) |
+| File | Purpose |
+|------|---------|
+| `CLAUDE.md` | Identity, Role Gate (evidence-matching), 10 commandments, compliance checklists |
+| `SOP.md` | 10 sections: vault, delivery, rotation, scans, audit, incident, PDPA, review, boot, tech ref |
+| `audits/anon-surface-probe.sh` | Weekly anon REST surface probe — probes all 6 projects, 146+ tables |
+| `audits/anon-surface-allowlist.json` | 34 by-design tables with falsifiable `no_personal_data` assertions |
+| `~/.oracle/security/*.md` | Fix specs (T106 birthday_gift_links, T106-anon-policy-sweep, etc.) |
 
 ## Business Logic
 
@@ -113,13 +118,8 @@ Security-Oracle/
 
 **Vault CLI:**
 ```bash
-# Lookup a credential (sends to stdout, never to file)
 ~/.oracle/security/vault-access.sh lookup <oracle> <category> <key>
-
-# Audit access log
 ~/.oracle/security/vault-access.sh audit-log
-
-# Rotate OAuth token (automated)
 ~/.oracle/security/supabase-token-rotate.sh
 ```
 
@@ -127,6 +127,7 @@ Security-Oracle/
 - Dual-field bug: if entry has both `token` and `value`, canonical is `value` only
 - Hollow entries: some have metadata but empty value — verify before delivery
 - curl > file: never write credentials directly to file; use temp, validate, then move
+- Secrets via vault file only (2026-07-22 incident): never paste tokens/credentials in chat/maw hey/cc/thread — all messages are logged permanently
 
 ### 2. Credential Delivery Protocol
 
@@ -160,41 +161,82 @@ Oracle requests key via maw hey/talk-to
 | Oracle offboarded | Within 24h | Rotate all keys they had access to |
 | After incident | Within 1h | All potentially affected keys |
 
-**Rotation Procedure (7 steps):**
-1. Backup vault (timestamped `.bak`)
-2. Generate new key at service provider
-3. Update vault entry: `value`, `last_rotated`, `rotated_by`, remove stale `token` field
-4. Deliver via Credential Delivery SOP
-5. Verify services work with new key
-6. Revoke old key at provider
-7. Log rotation in access.log
-
-**Automated OAuth Rotation:**
-- Script: `~/.oracle/security/supabase-token-rotate.sh`
-- Uses refresh_token to auto-refresh (24h expiry)
-- Writes to temp file first, validates, then moves to real path
-- Schedule: daily before MCP operations
+**Recent Rotations:**
+- iJourney#89/#90 (2026-07-06): service_role in public bundle — rotated same-day, RLS remediation
+- CF vault tokens dead since 2026-07-04 (petdeals Actions secret is separate+live)
 
 ### 4. Daily Security Scan
 
-**4-Step Procedure:**
+**Scope**: 82 repos (dynamic discovery — `~/repos/github.com/BankCurfew/*/`), gitleaks integration.
 
 | Step | Action | Tools |
 |------|--------|-------|
-| 1 | Secret detection | `grep` recent commits across 16+ repos for patterns: `SUPABASE_KEY`, `API_KEY`, `SECRET`, `PASSWORD`, `TOKEN`, `Bearer`, `sk-`, `eyJ` |
-| 2 | .gitignore audit | Verify secret patterns covered (`.env`, credentials, keys, tokens) |
-| 3 | Vault access log review | Check for anomalies (repeated DENIED, unusual combos, high-frequency) |
+| 1 | Secret detection | gitleaks + grep across recent commits for patterns: `SUPABASE_KEY`, `API_KEY`, `SECRET`, `PASSWORD`, `TOKEN`, `Bearer`, `sk-`, `eyJ`, `ghp_`, `cfat_` |
+| 2 | .gitignore audit | Verify secret patterns covered (`.env`, `*.key.json`, `*.pem`) |
+| 3 | Vault access log review | Check for anomalies |
 | 4 | Report to BoB | GREEN / YELLOW / RED with findings + next actions |
 
-**Scan Status as of 2026-06-19:** ALL GREEN, 0 secrets exposed, 2 false positives identified
+**Current Status (2026-08-10):** ALL GREEN, 82 repos scanned, 0 secrets exposed, gitleaks clean.
 
-### 5. Incident Response
+### 5. Anon Surface Probe (NEW — 2026-08-08)
+
+Weekly REST probe that tests what the Supabase anon key can actually read — tests the PROPERTY (what anon sees), not the TEXT (what migrations say).
+
+**Architecture:**
+```
+anon-surface-probe.sh
+  → Iterates all 6 Supabase projects
+  → Lists tables via Management API
+  → Probes each with anon key: GET /rest/v1/{table}?select=*&limit=0 (count=exact)
+  → Cross-checks against anon-surface-allowlist.json
+  → Detects new tables appearing (change detection via state file)
+  → Alerts on any table returning rows that isn't allowlisted
+```
+
+**Allowlist Contract:**
+- 34 tables listed (31 FA Tools + 3 iJourney) — all product catalogs, rate tables, fund data, app config
+- Every entry requires `reason` (why it's public) and `no_personal_data: true` (falsifiable assertion)
+- Adding an entry = stating something the probe can disprove if wrong
+- Column-verified: no PII columns (name, email, phone, national_id, etc.)
+
+**What it caught:**
+- Would have caught T106 birthday_gift_links on 2026-06-17 (55 days earlier than manual discovery)
+- Found 2 new findings on first full run (application_shares, policy_investments_deprecated) — both fixed same-day
+
+### 6. RLS Watchdog + T106 Class (Major — 2026-07-06 to 2026-08-10)
+
+**T106 Class**: A family of RLS bugs where anon/public-role policies used USING(true) or IS NOT NULL predicates, granting unrestricted read access to customer data.
+
+| Finding | Table | PII Exposed | Status |
+|---------|-------|------------|--------|
+| T106 | birthday_gift_links | Name, address, phone, email | FIXED — SECURITY DEFINER RPCs |
+| T106-B | line_followups/notes/tags (3 tables) | LINE user IDs, display names | FIXED — scoped to authenticated |
+| T106-C | portfolio_shares | Customer names, financials (9 rows) | FIXED — RPC |
+| T106-D | insurance_applications | 55 national IDs, 80 names, 68 phones, bank details | FIXED — auth-only |
+| T106-E | invite_links | 20 unauthorized joins | FIXED — policy dropped |
+| — | application_shares | Share tokens (indirect PII access) | FIXED — SECURITY DEFINER RPCs |
+| — | policy_investments_deprecated | 603 rows with policy_no + financials | FIXED — anon policy dropped |
+| — | iJourney client_share_links | Share tokens (quiz results, LOW) | PENDING |
+
+**Predicate Classes Found:**
+- `USING(true)` — full unrestricted access (4 tables)
+- `IS NOT NULL` on secret column — looks correct but returns all rows (6 policies)
+- `is_active = true` without token equality — lists all active items (2 tables)
+
+**Lessons (carried in arra):**
+1. Test property not configuration — probe found 22 tables where policy sweep found 10
+2. IS NOT NULL on a secret column returns all rows — wider class than USING(true)
+3. `.select('*')` blocks column-level REVOKE
+4. Check populated VALUES not column STRUCTURE
+5. DDL and frontend must ship atomically for share-link tables
+
+### 7. Incident Response
 
 **Severity Levels:**
 
 | Level | Examples | Response Time |
 |-------|----------|---------------|
-| P0 CRITICAL | Secret leaked, data breach, compromised service | Immediate (minutes) |
+| P0 CRITICAL | Secret leaked, data breach, PII exposure (T106-D) | Immediate (minutes) |
 | P1 HIGH | Missing .gitignore, exposed endpoint, key outside vault | Within 1 hour |
 | P2 MEDIUM | Outdated dependency, weak validation | Within 24 hours |
 | P3 LOW | Best practice improvement | Weekly review |
@@ -202,24 +244,33 @@ Oracle requests key via maw hey/talk-to
 **Response Protocol:**
 ```
 DETECT + CONTAIN (minutes)
-  → Identify scope, revoke/rotate compromised creds, block access, notify BoB
+  → Identify scope, revoke/rotate, notify BoB
 
 ERADICATE (1 hour)
-  → Remove root cause (git-filter-repo if in history), rotate ALL affected creds,
-    verify no unauthorized access
+  → Remove root cause, rotate ALL affected creds
 
 RECOVER (24 hours)
-  → Verify services work, deliver new creds, confirm with QA
+  → Verify services, deliver new creds, confirm with QA
 
 LESSONS LEARNED (48 hours)
-  → Write retrospective, update SOP, train affected oracles
+  → Write retrospective, update SOP, arra_learn for fleet
 ```
 
-**Recent P0 Incidents (2026-06-19):**
-- AKIA key found in `audits/2026-03-19/FULL-SECURITY-AUDIT.md:104` — redacted + git-filter-repo scrub + force-push
-- Trader-Oracle `.venv` directory (4,173 files) committed to git — removed + git-filter-repo scrub
+### 8. Role Gate (Evidence-Matching — 2026-07-14)
 
-### 6. PDPA Compliance (Thai Personal Data Protection Act)
+Security-Oracle has a structural gate: **never upgrade the evidence level of a claim**.
+
+| What I ran | What I report |
+|-----------|---------------|
+| curl with anon key | "anon probe" |
+| curl with service_role | "service_role query" (WARNING: bypasses RLS) |
+| curl with real user JWT | "authenticated round-trip" |
+| 2-JWT cross-user test | "cross-user live test" |
+| Code review only | "code-verified, not live-tested" |
+
+**Origin**: Jul 14 — reported "REAL LINE BOT ROUND-TRIP PASS" for a SQL-only check. BoB caught it. DocCon NOTICE (1st). Fix: classify evidence level before writing the report word.
+
+### 9. PDPA Compliance (Thai Personal Data Protection Act)
 
 **8-Item Checklist:**
 1. Consent — explicit, informed, specific purpose
@@ -240,15 +291,7 @@ LESSONS LEARNED (48 hours)
 | L2 | Internal | Code, configs (no secrets), docs | Team access OK |
 | L1 | Public | Open source, public docs | No restrictions |
 
-### 7. RLS Watchdog
-
-- All customer-data tables across 3 Supabase projects have RLS enabled
-- **76/76 tables verified** with `rowsecurity=true` (Issue #5 closed)
-- Cross-check QA bug reports against RLS policies
-- Audit ALL tables in affected project (not just reported table)
-- Verify public flows remain unblocked (apply/:shareToken, encrypt-decrypt, submit-lead)
-
-### 8. The 10 Security Commandments
+### 10. The 10 Security Commandments
 
 1. **Zero Trust** — Verify everything, trust nothing by default
 2. **Least Privilege** — Minimum necessary access per oracle
@@ -270,72 +313,70 @@ Security-Oracle has no traditional API. Operations are performed via:
 | `vault-access.sh lookup` | Bash CLI | Credential retrieval (ACL-gated) |
 | `vault-access.sh audit-log` | Bash CLI | Access log review |
 | `supabase-token-rotate.sh` | Bash CLI | Automated OAuth refresh |
+| `anon-surface-probe.sh` | Bash CLI | Weekly anon REST surface probe (all 6 projects) |
 | `maw hey` / `/talk-to` | Fleet comms | Credential requests + delivery |
 | `git-filter-repo` | Git tool | Historical secret removal (P0 incidents) |
-| Supabase Management API | HTTP | RLS policy verification, table audit |
+| Supabase Management API | HTTP | RLS policy verification, table audit, column inspection |
 
 ## Deployment
 
 ### Session Boot Checklist
 1. Read central directory: `~/.oracle/directory/INDEX.md`
 2. Read focus.md: `ψ/inbox/focus.md` (current state)
-3. Read System Playbook: `~/.oracle/SYSTEM_PLAYBOOK.md`
-4. Check vault health: `vault-access.sh audit-log`
-5. Check PM2 services: `pm2 list` (security-related services online?)
-6. Read Oracle thread (pending credential requests)
+3. Boot Readiness Gate: gitleaks, git fleet, vault files, Supabase PYF Pro key alive
+4. Read latest handoff: `ls -t ψ/inbox/handoff/*.md | head -1`
+5. Check active loops: daily-security-scan (09:00), supabase-advisor-weekly (Mon 09:00)
+6. Read Oracle thread (pending requests)
 7. Update focus.md (set STATE to working/monitoring)
 
 ### Environment
-- **Server**: curfew (WSL2, post-migration from mbank 2026-06-18)
-- **Repo size**: ~1.2MB (lightweight — docs + memory, no binary code)
-- **Git commits**: 50 total
-- **Vault passphrase**: `~/.oracle/security/.vault-pass` (chmod 600)
+- **Server**: curfew (WSL2)
+- **Repo size**: ~1.5MB (docs + memory + probe scripts, no binary code)
+- **Vault files**: 31 credential files in `~/.oracle/security/`
 
-### Hook Enforcement (6 stages)
-- **PreToolUse**: rtk-rewrite, pulse-ticket-check, dispatch-needs-issue, validate-project-prefix, enforce-maw-loop, enforce-maw-hey
-- **PostToolUse**: check-talk-to-cc (verify BoB cc'd), pulse-auto-cc, force-rrr-at-80, feed-activity
-- **OnStop**: check-cc-bob-on-stop, pre-close-psi-check
+### Active Loops
+| Loop | Schedule | Purpose |
+|------|----------|---------|
+| daily-security-scan | 09:00 daily | 82-repo secret scan + gitleaks |
+| supabase-advisor-weekly | Mon 09:00 | Supabase advisory + anon surface probe |
 
 ## Current State
 
 ### What's Working
-- Daily security scans (GREEN status, 0 exposed secrets)
+- Daily security scans (GREEN, 82 repos, 0 secrets, gitleaks clean)
+- Anon surface probe — all 6 projects, 146+ tables, 34 by-design allowlisted
+- T106 class fully closed (7 tables fixed, 6 IS NOT NULL policies fixed, 22/22 credential tables checked)
 - Vault management + credential delivery protocol
-- RLS verification across all 3 Supabase projects (76/76)
-- Automated OAuth token rotation
-- Incident response (2 P0s contained 2026-06-19)
-- 20+ documented lessons from past incidents
+- RLS verification: FA Tools 124/124, AIA KB 21/21, iJourney 22 tables
+- Weekly Supabase advisory (W32 clean — 0 CRITICALs)
+- Role Gate (evidence-matching) enforced since Jul 14
 
 ### Known Issues / Pending
 | # | Item | Priority | Status |
 |---|------|----------|--------|
-| 1 | QA test account password rotation | P1 | Waiting on Dev/Admin |
-| 2 | AIA portal creds stale (agent ID 0000711862) | P2 | Waiting แบงค์ |
-| 3 | FE-Oracle + Echo-Oracle .gitignore enhancement | P3 | Recommend |
-| 4 | Thread MCP hook (maw-hey-gate.sh) blocks arra_thread | P3 | Using maw hey fallback |
+| 1 | iJourney client_share_links (is_active=true policy) | P3 LOW | Dispatched to BotDev |
+| 2 | fhc_sessions cosmetic fix (anon_update USING(true) — safe but loaded gun) | P3 LOW | Backlog |
+| 3 | Wealth-bank shared-boundary ticket (FA Tools anon key in portal pages) | P3 LOW | Not a leak — shared boundary |
+| 4 | CF vault tokens dead since 2026-07-04 | P2 | Tracked, petdeals Actions separate |
 
-### Security Audit Summary (2026-03-19)
-- 18 repos audited, 368 data files scanned
-- Average security score: 7.1/10
-- 9 repos were missing `.gitignore` (CRITICAL — all remediated)
-- 3 repos had exposed `.venv` directories (MEDIUM — all remediated)
-- 0 accidentally committed secrets at time of audit
-
-### Recent Completions (2026-06-19)
-- AKIA key in audit file redacted + git-filter-repo scrubbed
-- Trader-Oracle .venv (4,173 files) removed + scrubbed
-- 19 stale path fixes (.claude/settings.json + .mcp.json) for curfew migration
-- Issue #5 RLS verified + closed (76/76 tables secure)
-- 2 credential deliveries (iAgencyAIA-Oracle, Wingman-Oracle)
+### Recent Completions (2026-06 to 2026-08)
+- T106 class: 7 tables fixed, IS NOT NULL predicate class discovered+fixed, insurance_applications P0 closed (55 national IDs)
+- Anon surface probe built + 34 by-design tables allowlisted (column-verified)
+- Probe robustness: fixed curl crash, connectivity check, key_var configs — now runs all 6 projects
+- application_shares + policy_investments_deprecated fixed same-day (BotDev)
+- iJourney#89 P0: service_role in public bundle — rotated same-day, RLS remediation
+- Weekly advisory W32: 0 CRITICALs, FA Tools 124/124 RLS on, AIA KB clean
+- Gitignore fleet hardening: 72/72 repos
+- Daily scans expanded to 82 repos with dynamic discovery + gitleaks
 
 ## Owner & Contacts
 
 | Role | Oracle | Notes |
 |------|--------|-------|
-| **Lead** | Security-Oracle | CISO, vault owner, daily scans |
+| **Lead** | Security-Oracle | CISO, vault owner, daily scans, anon probe |
 | **Supervisor** | BoB-Oracle | All credential deliveries cc'd to BoB |
 | **Infrastructure** | Admin-Oracle | Server access, PM2, network config |
-| **RLS Partner** | Data-Oracle | Database security co-audit |
+| **RLS Executor** | BotDev-Oracle | Supabase DDL execution (Security specs, BotDev deploys) |
 | **QA Partner** | QA-Oracle | Verify security fixes, test RLS flows |
 | **All Oracles** | Fleet-wide | Credential consumers, comply with ACL |
 
