@@ -1,0 +1,25 @@
+# Security — sensitive files
+.env
+.env.*
+!.env.example
+!.env.sample
+*.key.json
+*token*.json
+*.pem
+*.p12
+*.pfx
+*.jks
+credentials*.json
+*secret*
+*credential*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
