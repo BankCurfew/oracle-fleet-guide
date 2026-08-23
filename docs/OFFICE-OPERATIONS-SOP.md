@@ -145,7 +145,7 @@ SEE → PLAN → MANAGE → TRACK → DISPATCH
 | **SEE** | Check team status first | `maw peek`, `maw overview` |
 | **PLAN** | Analyze before delegating | Read code, write spec |
 | **MANAGE** | Distribute by skill, not pile on one | `maw peek` → distribute |
-| **TRACK** | Create ticket BEFORE dispatch | `gh issue create`, `./pulse add` |
+| **TRACK** | Create ticket BEFORE dispatch | `gh issue create`, `maw board add "title" --oracle <name> --priority P1` |
 | **DISPATCH** | Send with full spec + follow up | `/talk-to`, `maw hey` |
 
 ### Elon's Algorithm — Every Task
@@ -213,7 +213,7 @@ cc: [project-slug] #issue — <what> · <why|source> · <next> [· ref: <file:li
 | `maw task comment #<N> "message"` | Cross-oracle discussion |
 | `./pulse board` | View Pulse Master Board |
 | `./pulse scan` | Find untracked issues |
-| `./pulse add "title" --oracle <name>` | Create Pulse ticket |
+| `maw board add "title" --oracle <name> --priority P1` | Create Pulse ticket (board is SQLite #174; `./pulse add` is DEAD) |
 
 ### Active Projects (as of 2026-06-20)
 
