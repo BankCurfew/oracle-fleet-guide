@@ -22,6 +22,6 @@ if echo "$CMD" | grep -qE '(maw hey|/talk-to|talk-to)'; then
   fi
 
   # Block with error message — forces Claude to create ticket first
-  echo '{"error":"🚫 PULSE BLOCKED: ห้าม dispatch task โดยไม่มี pulse ticket. สร้างก่อน: ./pulse add \"task title\" --oracle <name> หรือ gh issue create แล้วค่อย dispatch. ถ้าไม่ใช่ task dispatch (แค่ถาม/remind/follow-up) เพิ่ม keyword: cc:/check/confirm/verify ใน command"}'
+  echo '{"error":"🚫 PULSE BLOCKED: ห้าม dispatch task โดยไม่มี ticket. สร้างก่อน: maw task add <project> \"task title\" หรือ gh issue create แล้วค่อย dispatch. ถ้าไม่ใช่ task dispatch (แค่ถาม/remind/follow-up) เพิ่ม keyword: cc:/check/confirm/verify ใน command"}'
   exit 2
 fi
