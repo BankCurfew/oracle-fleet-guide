@@ -144,10 +144,10 @@ if [ "$TOOL_NAME" = "Bash" ]; then
     "$HOME/.local/bin/maw" project focus --clear --oracle "${ORACLE_LOWER}" >/dev/null 2>&1 &
   fi
 
-  # Case 5: maw task add / maw board add (someone creating ticket directly)
-  if echo "$COMMAND" | grep -qE 'maw[[:space:]]+(task|board)[[:space:]]+add'; then
-    NOTIFY="TASK_ADD: ${ORACLE_LOWER} — $(echo "$COMMAND" | grep -oE '"[^"]{1,80}' | head -1 | tr -d '"')"
-    EVENT_TYPE="task_add"
+  # Case 5: maw board add (someone creating ticket directly)
+  if echo "$COMMAND" | grep -qE 'maw[[:space:]]+board[[:space:]]+add'; then
+    NOTIFY="BOARD_ADD: ${ORACLE_LOWER} — $(echo "$COMMAND" | grep -oE '"[^"]{1,80}' | head -1 | tr -d '"')"
+    EVENT_TYPE="board_add"
   fi
 
   # Case 6: gh pr create / gh pr merge

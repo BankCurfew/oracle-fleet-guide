@@ -67,6 +67,6 @@ echo "$CMD" | grep -qE '(maw hey |talk-to )' && exit 0
 
 # --- SIGNIFICANT WORK DETECTED without ticket marker ---
 
-echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"⚠️ BOB TICKET CHECK: กำลังทำงานโดยไม่มี ticket — สร้าง issue ก่อน:\n  gh issue create --repo BankCurfew/<repo> --title \"<title>\" --body \"<desc>\"\nหรือ maw task add <project> \"<title>\"\nเมื่อสร้างแล้ว warning นี้จะหายไป (Law #5: No Work Without a Ticket)"}}'
+echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"⚠️ BOB TICKET CHECK: กำลังทำงานโดยไม่มี ticket — สร้าง issue ก่อน:\n  gh issue create --repo BankCurfew/<repo> --title \"<title>\" --body \"<desc>\"\nหรือ maw board add \"<title>\"\nเมื่อสร้างแล้ว warning นี้จะหายไป (Law #5: No Work Without a Ticket)"}}'
 
 exit 0
