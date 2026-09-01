@@ -465,7 +465,7 @@ Data-Oracle does not expose HTTP APIs directly. All interactions via:
 
 | Priority | Requester | SLA |
 |----------|-----------|-----|
-| P0 | iAgencyAIA-Oracle (LINE bot) | Respond ASAP via `maw hey iagencyaia` |
+| P0 | FaSai-Oracle (LINE bot) (เปลี่ยนจาก iAgencyAIA-Oracle — merged/retired 1 ก.ย. 2569) | Respond ASAP via `maw hey fasai` |
 | P0 | แบงค์ direct | Immediate |
 | P1 | BoB task assignment | Within session |
 | P2 | Other oracles | Best effort |
