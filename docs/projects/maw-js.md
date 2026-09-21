@@ -210,6 +210,7 @@ Entry point parses `maw <cmd>` and dispatches to handlers. 50+ commands organize
 | `maw sovereign status/migrate` | Oracle-as-Sovereign layout |
 | `maw tokens [--top N]` | Token usage stats |
 | `maw chat [oracle]` | Grouped conversation view |
+| `maw audit [cc\|tasks\|heartbeat] [--today]` | Compliance audit for DocCon (GR#8 CC fields / task health / GR#9 heartbeat); no args = combined daily report |
 
 ### 2. Tmux Injection (`maw hey`)
 
@@ -566,6 +567,16 @@ Ensures dashboard `/api/file` can always resolve chip paths regardless of source
 - Federation token must be >= 16 chars (no length validation error message)
 - Feed polling uses byte-offset (~1s latency, not inotify)
 - Worktree matching is exact only (substring matching removed for safety)
+- **`maw audit cc` pre-T1881 numbers are floor-only, not real counts** (fixed `ebedd67d`,
+  2026-09-21): before the fix, `maw audit cc` read only `maw-log.jsonl`, which records direct
+  sends only — any message that went through the queued/retry drain path (pane busy → `[outbox]
+  drain-retry` → delivered later) was invisible. Same-day before/after on this office's own
+  fleet: 29 messages → 646 messages from 33 oracles once feed.log's `maw-hey » [message]` lines
+  were also parsed and deduped. Any GR#8 compliance percentage cited from `maw audit cc` before
+  this commit undercounted by roughly an order of magnitude and should not be trusted as a real
+  rate — re-run against current code if the number still matters (G-NUM-1 class: tool epoch
+  changed, both numerator and denominator need recomputing, not just the one that was measured
+  last).
 
 ## Owner & Contacts
 
