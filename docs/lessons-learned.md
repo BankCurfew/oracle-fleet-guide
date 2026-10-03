@@ -233,7 +233,7 @@ If ahead > 0, merge main → staging to trigger deploy.
 |---------|--------|--------|--------|
 | `fatools-staging` | `fatools.vuttipipat.com` | staging | Auto (github:push) |
 
-> Current state differs from this historical table (corrected 2026-10-03: fatools.vuttipipat.com serves MAIN, bundle commit 35b71a9; staging = staging.fatools.pages.dev; curl+bundle grep).
+> Current state differs from this historical table (2026-10-04: do not use, retiring T2546; staging = staging.fatools.pages.dev, prod = tools.iagencyaia.com, check /version.json).
 | `fatools` | `tools.iagencyaia.com` | main | **MANUAL** (wrangler ad_hoc) |
 
 BotDev deployed fixes to `fatools-staging` (auto-deploy) but `tools.iagencyaia.com` (production) runs from a DIFFERENT project that requires manual `wrangler pages deploy`. 5 PRs merged and "deployed" but เมย์ saw zero changes for 2 days.
