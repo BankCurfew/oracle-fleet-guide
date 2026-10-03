@@ -301,7 +301,7 @@ maw loop trigger <id>       # Manual trigger
 | CF Project | Domain | Purpose |
 |-----------|--------|---------|
 | `fatools` | tools.iagencyaia.com | **PRODUCTION** |
-| `fatools-staging` | fatools.vuttipipat.com | **STAGING** |
+| `fatools-staging` | fatools.vuttipipat.com | serves **MAIN**, not staging (corrected 2026-10-03: fatools.vuttipipat.com serves MAIN, bundle commit 35b71a9; staging = staging.fatools.pages.dev; curl+bundle grep) |
 
 Both deploy from `main` branch. Deploy to BOTH every time.
 

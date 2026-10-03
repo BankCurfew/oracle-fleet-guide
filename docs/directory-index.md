@@ -132,7 +132,8 @@ maw peek <oracle>              # See specific oracle's screen
 | URL | Repo | Method | Owner |
 |-----|------|--------|-------|
 | **tools.iagencyaia.com** | iagencyaiafatools | CF Pages (main branch) | BotDev |
-| **fatools.vuttipipat.com** | iagencyaiafatools | CF Pages (staging branch) | BotDev |
+| **fatools.vuttipipat.com** | iagencyaiafatools | serves **main**, not staging (corrected 2026-10-03: fatools.vuttipipat.com serves MAIN, bundle commit 35b71a9; staging = staging.fatools.pages.dev; curl+bundle grep) | BotDev |
+| **staging.fatools.pages.dev** | iagencyaiafatools | CF Pages staging branch | BotDev |
 | **seo.vuttipipat.com** | seo-backlink-bot | PM2 + CF Tunnel (port 47790) | FE |
 | **karn.vuttipipat.com** | client-presentation | CF Workers | BotDev |
 | **dashboard.vuttipipat.com** | maw-js office/ | PM2 + CF Tunnel | BoB/Admin |
@@ -140,7 +141,7 @@ maw peek <oracle>              # See specific oracle's screen
 ### Deploy Flow
 
 ```
-FA Tools:  push staging → test fatools.vuttipipat.com → merge main → tools.iagencyaia.com
+FA Tools:  push staging → test staging.fatools.pages.dev → merge main → tools.iagencyaia.com (fatools.vuttipipat.com also serves main, 2026-10-03)
 SEO Bot:   push main → PM2 restart → CF Tunnel auto-routes
 Dashboard: push main → pm2 restart maw → CF Tunnel auto-routes
 ```

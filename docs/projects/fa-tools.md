@@ -4,7 +4,7 @@
 
 - **What it does**: Professional insurance advisory toolkit for Financial Advisors (FAs) at AIA Thailand. Provides fast premium quotation (iQuick), detailed financial planning (iPlan), multi-product comparison (iCompare), UnitLink investment simulation (iLink), portfolio management with gap analysis, Financial Health Check (FHC), lead tracking, digital application form, agent training hub (iProcess with calendar/materials/exam/checklist), Hall of Fame recognition system (MDRT/COT/TOT awards + weekly performance tracking), and agent recruitment pipeline (iRecruit with public join form + prospect portal) -- all via a PWA.
 - **Who uses it**: Financial Advisors (authenticated), Agency Leaders (team management + performance entry), admin users (20+ config tabs), unauthenticated users (Basic Quick Mode for quick/plan/compare), shared proposal viewers (public links, no auth), and recruitment prospects (public join form + portal).
-- **Where it runs**: Production at `tools.iagencyaia.com`, staging at `fatools.vuttipipat.com` (both Cloudflare Pages). Backend on Supabase project `hztjrqlxrdsmxbkxojqg` (iAgencyAIA org).
+- **Where it runs**: Production at `tools.iagencyaia.com`, staging at `staging.fatools.pages.dev`; `fatools.vuttipipat.com` serves main too, not staging (corrected 2026-10-03, bundle commit 35b71a9) (all Cloudflare Pages). Backend on Supabase project `hztjrqlxrdsmxbkxojqg` (iAgencyAIA org).
 
 ## Architecture
 
@@ -379,7 +379,7 @@ There are TWO separate Cloudflare Pages projects. Both must be active.
 | CF Project | Domain | Branch | DNS Provider | Purpose |
 |-----------|--------|--------|-------------|---------|
 | `fatools` | tools.iagencyaia.com | main | MakeWebEasy (แบงค์ only) | **PRODUCTION** (customer-facing) |
-| `fatools-staging` | fatools.vuttipipat.com | main | Cloudflare (BoB/Admin) | **STAGING/internal** |
+| `fatools-staging` | fatools.vuttipipat.com | main | Cloudflare (BoB/Admin) | **serves main, NOT staging** (corrected 2026-10-03: fatools.vuttipipat.com serves MAIN, bundle commit 35b71a9; staging = staging.fatools.pages.dev; curl+bundle grep) |
 
 **2026-06-20 Incident:** `fatools` project had `deployments_enabled=FALSE` for weeks. All wrangler deploys went to `fatools-staging` only. tools.iagencyaia.com was stuck on an old build. Fixed by enabling auto-deploy on `fatools`.
 
