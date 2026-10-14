@@ -60,8 +60,8 @@ No invisible work. Every task has a ticket. Every ticket has a project. Every mo
 ### Rule #3: SESSION BOOT — READ BEFORE WORK
 Every session: read INDEX.md, check existing work, read conduct guides, read cost optimization notes.
 
-### Rule #4: IMAGE GENERATION — USE gemini-gen.sh
-Never write raw MQTT commands. Use `~/repos/github.com/BankCurfew/gemini-proxy-tools/scripts/gemini-gen.sh`.
+### Rule #4: IMAGE GENERATION — DALL-E (ChatGPT) ONLY, VIA THE POSTER SKILL
+Gemini is dropped (แบงค์ 14 Oct 2026): never `gemini-gen.sh` or the Gemini proxy. Primary: `/poster` skill → `poster.js` (CDP, own slot window L4). Fallback only after `chatgpt-status.sh` answers: `gemini-proxy-tools/scripts/chatgpt-gen.sh`. Never write raw MQTT commands. Full: `~/.oracle/rules/GR04-image-gen.md`.
 
 ### Rule #5: BROWSER AUTOMATION — USE playwright-cli (pw-cli.sh)
 Never use Playwright MCP or cdp.ts for browser automation. Use `~/.oracle/tools/pw-cli.sh`. 4.6x cheaper.
@@ -376,7 +376,7 @@ echo "$(date '+%Y-%m-%d %H:%M:%S') | <Oracle> | $(hostname) | Notification | <Or
 | `./pulse` | Master Board CLI | `./pulse board` |
 | `rtk` | Token-optimized CLI (60-90% savings) | `rtk git status` |
 | `pw-cli.sh` | Browser automation | `$pw open`, `$pw goto URL` |
-| `gemini-gen.sh` | Image generation via Gemini | `gemini-gen.sh "prompt" --download "prefix"` |
+| `poster.js` (`/poster`) | Image generation via ChatGPT DALL-E (Gemini dropped 14 Oct 2026, GR#4) | `/poster` · fallback `chatgpt-gen.sh "prompt" --download "prefix"` |
 
 ### Shared Infrastructure
 

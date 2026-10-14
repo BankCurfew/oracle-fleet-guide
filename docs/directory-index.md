@@ -258,11 +258,12 @@ $pw state-load aia              # Restore cookies
 
 **Rule**: Always use pw-cli.sh, never Playwright MCP or cdp.ts. 4.6x cheaper.
 
-### Gemini Image Generation
+### Image Generation (DALL-E via ChatGPT(Gemini dropped 14 Oct 2026, GR#4)
 
 ```bash
-~/repos/github.com/BankCurfew/gemini-proxy-tools/scripts/gemini-gen.sh \
-  "prompt" --download "filename-prefix"
+/poster            # primary: poster.js, CDP, own slot window L4
+~/repos/github.com/BankCurfew/gemini-proxy-tools/scripts/chatgpt-gen.sh \
+  "prompt" --download "filename-prefix"   # fallback, only after chatgpt-status.sh answers
 ```
 
 **Rule**: Designer's job. Never write raw MQTT commands.
@@ -319,7 +320,7 @@ gmail_create_draft              # Create draft
 | 1 | **CC Bob Always** | Every action → `/talk-to bob "cc: ..."`. If Bob doesn't know, it didn't happen |
 | 2 | **Board-Driven Work** | No work without ticket. 6 Laws of Task Management |
 | 3 | **Session Boot** | Read directory, existing work, conduct, cost notes before working |
-| 4 | **Gemini via Script** | Use gemini-gen.sh, never raw MQTT |
+| 4 | **Image gen = DALL-E** | `/poster` (poster.js); Gemini dropped 14 Oct 2026; never raw MQTT |
 | 5 | **Browser via pw-cli** | Use pw-cli.sh, never Playwright MCP. 4.6x cheaper |
 | 6 | **Takeover Protocol** | /recap → thread → git log → handoff → THEN work |
 | 7 | **Decision Pipeline** | Decision brief → BoB → แบงค์ inbox. 48h or auto-close |

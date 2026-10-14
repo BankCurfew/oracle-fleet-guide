@@ -18,8 +18,8 @@
 | **Templating** | HTML5 + CSS3 | Poster layout (Kanit, Inter, Noto Sans Thai fonts) |
 | **Rendering** | Playwright CLI (headless Chromium) | HTML → PNG screenshot at exact dimensions |
 | **Poster Pipeline (Primary)** | poster.js CDP | PRIMARY SOP — drives ChatGPT Brand Chat, logo composite (hash-gated) |
-| **Poster Pipeline (Fallback)** | gemini-gen.sh MQTT | Fallback when poster.js CDP unavailable |
-| **Image Gen (Secondary)** | Gemini 2.5-Flash (Python `google-genai`) | Batch generation via `gen-batch.py` |
+| **Poster Pipeline (Fallback)** | `chatgpt-gen.sh` (ChatGPT via MQTT extension) | Only after `chatgpt-status.sh` answers; ~~gemini-gen.sh~~ dropped 14 Oct 2026 (GR#4) |
+| ~~**Image Gen (Secondary)**~~ | ~~Gemini 2.5-Flash (Python `google-genai`)~~ | DROPPED 14 Oct 2026 (GR#4, Gemini dropped); `gen-batch.py` not to be used |
 | **Image Gen (Tertiary)** | ComfyUI (Stable Diffusion) | Highest quality when available |
 | **Data Poster Rendering** | PIL/Pillow + raqm | Text/numbers/cards for data posters (LINE Seed Sans TH font) |
 | **Image Processing** | Sharp v0.34.5, PIL/Pillow | Resize, crop, format conversion |
@@ -37,7 +37,7 @@ Brief (from Wingman/BoB)
 Method A (PRIMARY): poster.js CDP pipeline
   - Prime brand chat → generate (atw/mb/fund) → wait → download
   - Logo composite (canonical asset, hash-gated)
-  - Fallback: gemini-gen.sh MQTT
+  - Fallback: chatgpt-gen.sh (Gemini dropped 14 Oct 2026, GR#4)
   ↓
 Method B (Data posters): DALL-E hero + Pillow text/numbers
   - Hero image only from DALL-E
@@ -160,7 +160,7 @@ Step 5: Deliver 1 Story IG (1080×1920) to Wingman
 Step 6: cc Wingman + cc BoB (structured format)
 ```
 
-**Fallback**: gemini-gen.sh MQTT pipeline when poster.js CDP is unavailable.
+**Fallback**: `chatgpt-gen.sh` (only after `chatgpt-status.sh` answers) when poster.js CDP is unavailable. gemini-gen.sh / Gemini API dropped 14 Oct 2026 (GR#4).
 
 **Legacy pipeline** (HTML template → Playwright render → 4 sizes) still available in `ψ/writing/posters/gen-*.py` scripts for cases where DALL-E fails or custom layouts are needed.
 
@@ -268,8 +268,8 @@ for (const p of posters) {
 | Priority | Tool | When | Notes |
 |----------|------|------|-------|
 | 1 (Primary) | poster.js CDP (ChatGPT Brand Chat) | Default | PRIMARY SOP — poster.js drives CDP pipeline, logo composite hash-gated |
-| 2 (Fallback) | gemini-gen.sh MQTT | poster.js unavailable | Gemini via MQTT proxy |
-| 3 (Secondary) | Gemini 2.5-Flash | Batch generation | `gen-batch.py`, Python `google-genai` |
+| 2 (Fallback) | chatgpt-gen.sh | poster.js unavailable | ChatGPT via MQTT extension (gemini-gen.sh dropped 14 Oct 2026) |
+| ~~3 (Secondary)~~ | ~~Gemini 2.5-Flash~~ | DROPPED 14 Oct 2026 (GR#4) | `gen-batch.py` not to be used |
 | 4 (Tertiary) | ComfyUI | Highest quality | When available on Windows-side |
 | Data posters | DALL-E (hero only) + Pillow | Data-heavy visuals | Hero image from DALL-E, all text/numbers/cards via Pillow (LINE Seed Sans TH + raqm) |
 | Never | CSS gradients only | — | Not acceptable as hero |
@@ -367,8 +367,8 @@ No dedicated API server. Designer-Oracle operates through:
 |-------------|--------|---------|
 | Playwright CLI | `pw-cli.sh` commands | HTML → PNG rendering |
 | poster.js CDP | CDP automation | PRIMARY poster pipeline (brand chat + logo composite) |
-| gemini-gen.sh MQTT | MQTT proxy | Fallback poster pipeline |
-| Gemini API | Python `google-genai` | Image generation (batch) |
+| ~~gemini-gen.sh MQTT~~ | MQTT proxy | DROPPED 14 Oct 2026 (GR#4) |
+| ~~Gemini API~~ | Python `google-genai` | DROPPED 14 Oct 2026 (GR#4) |
 | oracle-v2 MCP | `/talk-to`, `oracle_search` | Cross-oracle communication |
 | Supabase MCP | Database queries | Project `hztjrqlxrdsmxbkxojqg` |
 
@@ -378,7 +378,7 @@ No dedicated API server. Designer-Oracle operates through:
 
 - Runs locally on Curfew (WSL2, Linux)
 - Poster rendering: `node output/[series]-[date]/render.js` (Playwright)
-- Image generation: `bash gemini-gen.sh "prompt" --download "prefix"` or ChatGPT Brand Chat
+- Image generation: `/poster` (ChatGPT Brand Chat via poster.js); Gemini dropped 14 Oct 2026 (GR#4)
 - Batch scenes: `python3 assets/scenes/gen-batch.py`
 - Output stored in `output/[series]-[date]/` (PNG files)
 - All changes tracked in Git, synced to GitHub
