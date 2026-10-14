@@ -262,8 +262,7 @@ $pw state-load aia              # Restore cookies
 
 ```bash
 /poster            # primary: poster.js, CDP, own slot window L4
-~/repos/github.com/BankCurfew/gemini-proxy-tools/scripts/chatgpt-gen.sh \
-  "prompt" --download "filename-prefix"   # fallback, only after chatgpt-status.sh answers
+# no fallback: browser-proxy extension (chatgpt-gen.sh / gemini-gen.sh) stalls, admin 14 Oct 11:06
 ```
 
 **Rule**: Designer's job. Never write raw MQTT commands.

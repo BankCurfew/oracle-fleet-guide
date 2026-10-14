@@ -18,7 +18,7 @@
 | **Templating** | HTML5 + CSS3 | Poster layout (Kanit, Inter, Noto Sans Thai fonts) |
 | **Rendering** | Playwright CLI (headless Chromium) | HTML → PNG screenshot at exact dimensions |
 | **Poster Pipeline (Primary)** | poster.js CDP | PRIMARY SOP — drives ChatGPT Brand Chat, logo composite (hash-gated) |
-| **Poster Pipeline (Fallback)** | `chatgpt-gen.sh` (ChatGPT via MQTT extension) | Only after `chatgpt-status.sh` answers; ~~gemini-gen.sh~~ dropped 14 Oct 2026 (GR#4) |
+| ~~**Poster Pipeline (Fallback)**~~ | ~~gemini-gen.sh / chatgpt-gen.sh (MQTT extension)~~ | NONE since 14 Oct 2026: Gemini dropped (GR#4) + browser-proxy extension stalls (admin 11:06) |
 | ~~**Image Gen (Secondary)**~~ | ~~Gemini 2.5-Flash (Python `google-genai`)~~ | DROPPED 14 Oct 2026 (GR#4, Gemini dropped); `gen-batch.py` not to be used |
 | **Image Gen (Tertiary)** | ComfyUI (Stable Diffusion) | Highest quality when available |
 | **Data Poster Rendering** | PIL/Pillow + raqm | Text/numbers/cards for data posters (LINE Seed Sans TH font) |
@@ -37,7 +37,7 @@ Brief (from Wingman/BoB)
 Method A (PRIMARY): poster.js CDP pipeline
   - Prime brand chat → generate (atw/mb/fund) → wait → download
   - Logo composite (canonical asset, hash-gated)
-  - Fallback: chatgpt-gen.sh (Gemini dropped 14 Oct 2026, GR#4)
+  - No fallback (14 Oct 2026, GR#4): extension path stalls; exit 75 = retry later
   ↓
 Method B (Data posters): DALL-E hero + Pillow text/numbers
   - Hero image only from DALL-E
@@ -160,7 +160,7 @@ Step 5: Deliver 1 Story IG (1080×1920) to Wingman
 Step 6: cc Wingman + cc BoB (structured format)
 ```
 
-**Fallback**: `chatgpt-gen.sh` (only after `chatgpt-status.sh` answers) when poster.js CDP is unavailable. gemini-gen.sh / Gemini API dropped 14 Oct 2026 (GR#4).
+**Fallback**: none (14 Oct 2026, GR#4). gemini-gen.sh / Gemini API dropped; chatgpt-gen.sh rides the same browser-proxy extension, which stalls every command (admin 11:06). poster.js exit 75 = TAB BUSY → retry later.
 
 **Legacy pipeline** (HTML template → Playwright render → 4 sizes) still available in `ψ/writing/posters/gen-*.py` scripts for cases where DALL-E fails or custom layouts are needed.
 
@@ -268,7 +268,7 @@ for (const p of posters) {
 | Priority | Tool | When | Notes |
 |----------|------|------|-------|
 | 1 (Primary) | poster.js CDP (ChatGPT Brand Chat) | Default | PRIMARY SOP — poster.js drives CDP pipeline, logo composite hash-gated |
-| 2 (Fallback) | chatgpt-gen.sh | poster.js unavailable | ChatGPT via MQTT extension (gemini-gen.sh dropped 14 Oct 2026) |
+| ~~2 (Fallback)~~ | ~~gemini-gen.sh / chatgpt-gen.sh~~ | — | NONE since 14 Oct 2026 (Gemini dropped; extension stalls) |
 | ~~3 (Secondary)~~ | ~~Gemini 2.5-Flash~~ | DROPPED 14 Oct 2026 (GR#4) | `gen-batch.py` not to be used |
 | 4 (Tertiary) | ComfyUI | Highest quality | When available on Windows-side |
 | Data posters | DALL-E (hero only) + Pillow | Data-heavy visuals | Hero image from DALL-E, all text/numbers/cards via Pillow (LINE Seed Sans TH + raqm) |

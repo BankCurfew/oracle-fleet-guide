@@ -59,7 +59,7 @@
 | 1 | **CC BOB — Always** | Every action → cc BoB. If BoB doesn't know, it didn't happen. |
 | 2 | **Board & Project Management** | No invisible work. Every task has a ticket. |
 | 3 | **Session Boot — Read Before Work** | Read INDEX.md, existing work, conduct guides on boot. |
-| 4 | **Image Generation — DALL-E (ChatGPT) only** | `/poster` (poster.js) primary; `chatgpt-gen.sh` fallback. Gemini dropped 14 Oct 2026. Never raw MQTT. |
+| 4 | **Image Generation — DALL-E (ChatGPT) only** | `/poster` (poster.js, CDP) only; no fallback (browser-proxy extension stalls, 14 Oct 2026). Gemini dropped 14 Oct 2026. Never raw MQTT. |
 | 5 | **Browser Automation — Use pw-cli.sh** | Never Playwright MCP directly. 4.6x cheaper. |
 | 6 | **Takeover Protocol — Read Before Touch** | /recap → read thread → git log → handoff → THEN work. |
 | 7 | **Decision Delivery — 48h or Auto-Close** | Decisions through BoB's inbox. Max 2 open per oracle. |
