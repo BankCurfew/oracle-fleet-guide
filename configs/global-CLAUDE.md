@@ -1,5 +1,9 @@
 # Global Oracle Rules (loaded in EVERY session)
 
+> **⚠️ STALE SNAPSHOT, not authoritative.** Copied before the T2776 rules rewrite; several rules here have changed since
+> (e.g. GR#1 is no longer "ALWAYS"). The live rules are in `~/.claude/CLAUDE.md` on the fleet host. GR#4 below was corrected
+> on 14 Oct 2026 (T3030) because it taught a dropped tool.
+
 ## GOLDEN RULE #1: CC BOB — ALWAYS
 
 Every Oracle MUST follow this rule with ZERO exceptions:
@@ -140,7 +144,12 @@ Oracles lose context across sessions. Without this boot protocol:
 
 ---
 
-## GOLDEN RULE #4: IMAGE GENERATION — USE gemini-gen.sh
+## GOLDEN RULE #4: IMAGE GENERATION — DALL-E (ChatGPT) ONLY, VIA THE POSTER SKILL
+
+> **14 Oct 2026 (T3030): Gemini is dropped.** Image gen = skill `/poster` (`poster.js`, CDP → ChatGPT DALL-E) only.
+> `gemini-gen.sh` / `chatgpt-gen.sh` are not fallbacks. The text below is kept as history.
+
+### HISTORY: gemini-gen.sh (dropped)
 
 When you need to generate images via Gemini, **NEVER write raw MQTT/mosquitto_pub commands**. Use the ready-made script:
 
