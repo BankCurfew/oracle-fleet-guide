@@ -23,3 +23,15 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# fleet baseline (T2982): backup copies of live state never committable
+*.bak*
+*.pre-*
+!.pre-commit-config.yaml
+*.orig
+*~
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
