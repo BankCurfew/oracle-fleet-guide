@@ -237,7 +237,7 @@ maw project add <slug> #<id>    # Add task to project
 maw loop                        # List all loops
 maw loop add '{json}'           # Create loop
 maw loop trigger <id>           # Manual trigger
-maw loop remove <id>            # Remove loop
+maw loop remove <id> --yes      # Remove loop (no --yes = dry run, from 31 Oct; prints the undo)
 ```
 
 ### Playwright CLI (Browser Automation)

@@ -177,7 +177,7 @@ Tracking work across oracles and repos.
 | `maw loop history [id]` | Loop execution history |
 | `maw loop trigger <id>` | Manually fire a loop |
 | `maw loop add '{json}'` | Add/update a loop definition |
-| `maw loop remove <id>` | Remove a loop |
+| `maw loop remove <id> --yes` | Remove a loop. Without `--yes` it is a dry run (from 31 Oct, T3487); with it, it prints the undo `maw loop add '<json>'` |
 | `maw loop enable <id>` | Enable a loop |
 | `maw loop disable <id>` | Disable a loop |
 | `maw loop on` | Enable loop engine |

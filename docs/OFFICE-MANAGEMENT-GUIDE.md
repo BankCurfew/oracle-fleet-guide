@@ -248,7 +248,7 @@ Hook `auto-task-done.sh` automatically runs `maw task done` when `gh issue close
 ```bash
 maw loop add '{"id":"my-loop","oracle":"bob","tmux":"01-bob:0","schedule":"*/5 * * * *","prompt":"check status","requireIdle":true,"enabled":true,"description":"Description"}'
 maw loop                    # List all loops
-maw loop remove <id>        # Remove loop
+maw loop remove <id> --yes  # Remove loop (no --yes = dry run, from 31 Oct; prints the undo)
 maw loop trigger <id>       # Manual trigger
 ```
 
