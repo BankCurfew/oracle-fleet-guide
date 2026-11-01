@@ -345,9 +345,9 @@ From `src/engine/scoring-v6.ts:207-229`:
 
 ### Build & Deploy (T3553, 1 Nov 2026 — source: iJourney `README.md` § Deploy, PR #163)
 
-**Quiz (`fa-recruitment-quiz`, journey.iagencyaia.com): GitHub Actions only.** Merge to `main` → `.github/workflows/deploy.yml` (job `deploy`) builds with the repo secrets and deploys. Redeploy without a commit: re-run the latest run on `main` (`gh run rerun <id>`; the workflow also has `workflow_dispatch`).
+**Quiz (`fa-recruitment-quiz`, journey.iagencyaia.com): GitHub Actions only.** Merge to `main` → `.github/workflows/deploy.yml` (job `deploy`) builds with the repo secrets and deploys. Redeploy without a commit: `gh workflow run deploy.yml --ref main` (or `gh run rerun <id>` on the latest run on `main`).
 
-**Never `wrangler pages deploy` the quiz by hand**: a local build reads `.env.local`, which has no `VITE_CF_BEACON_TOKEN`, and ships without the Cloudflare page-view beacon, silently. After any deploy, check the live bundle carries the beacon.
+**Never `wrangler pages deploy` the quiz by hand**: a local build reads `.env.local`, which has no `VITE_CF_BEACON_TOKEN`, and ships without the Cloudflare page-view beacon, silently. After any deploy, run the beacon check command in iJourney `README.md` § Deploy (PR #164; `1` = on, `0` = shipped without it).
 
 **Admin (`ijourney-admin`)** has no Actions job, so deploy by hand:
 
