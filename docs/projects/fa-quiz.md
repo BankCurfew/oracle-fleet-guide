@@ -345,9 +345,13 @@ From `src/engine/scoring-v6.ts:207-229`:
 
 ### Build & Deploy (T3553, 1 Nov 2026 — source: iJourney `README.md` § Deploy, PR #163)
 
-**Quiz (`fa-recruitment-quiz`, journey.iagencyaia.com): GitHub Actions only.** Merge to `main` → `.github/workflows/deploy.yml` (job `deploy`) builds with the repo secrets and deploys. Redeploy without a commit: `gh workflow run deploy.yml --ref main` (or `gh run rerun <id>` on the latest run on `main`).
+> ⚠️ **Canonical prod path OPEN (DocCon, 1 Nov 2026)**: iJourney README § Deploy (T3553) says "GitHub Actions only", but iJourney `docs/SOP-IJOURNEY-DEPLOY.md:191` (T3510 PAR) says `scripts/deploy-prod.sh` is the only prod path. Waiting on bob's ruling via botdev; this section will follow it.
 
-**Never `wrangler pages deploy` the quiz by hand**: a local build reads `.env.local`, which has no `VITE_CF_BEACON_TOKEN`, and ships without the Cloudflare page-view beacon, silently. After any deploy, run the beacon check command in iJourney `README.md` § Deploy (PR #164; `1` = on, `0` = shipped without it).
+**Quiz (`fa-recruitment-quiz`, journey.iagencyaia.com)**, two paths exist:
+- **GitHub Actions**: merge to `main` → `.github/workflows/deploy.yml` (job `deploy`) builds with the repo secrets and deploys. Redeploy without a commit: `gh workflow run deploy.yml --ref main`. Needs the `VITE_CF_BEACON_TOKEN` repo secret (created 1 Nov 2026; runs before that shipped without the beacon).
+- **`scripts/deploy-prod.sh`** (T3510): reads the beacon token from the vault, `assert-dist.mjs` (`IJ_DEPLOY=prod`) refuses a bundle without it, checks the live bundle after deploy.
+
+**Never raw `wrangler pages deploy` of a plain local build**: it reads `.env.local`, which has no `VITE_CF_BEACON_TOKEN`, and ships without the Cloudflare page-view beacon, silently. After any deploy, run the beacon check command in iJourney `README.md` § Deploy (PR #164; `1` = on, `0` = shipped without it).
 
 **Admin (`ijourney-admin`)** has no Actions job, so deploy by hand:
 
