@@ -343,11 +343,17 @@ From `src/engine/scoring-v6.ts:207-229`:
 
 ## Deployment
 
-### Build & Deploy
+### Build & Deploy (T3553, 1 Nov 2026 — source: iJourney `README.md` § Deploy, PR #163)
+
+**Quiz (`fa-recruitment-quiz`, journey.iagencyaia.com): GitHub Actions only.** Merge to `main` → `.github/workflows/deploy.yml` (job `deploy`) builds with the repo secrets and deploys. Redeploy without a commit: re-run the latest run on `main` (`gh run rerun <id>`; the workflow also has `workflow_dispatch`).
+
+**Never `wrangler pages deploy` the quiz by hand**: a local build reads `.env.local`, which has no `VITE_CF_BEACON_TOKEN`, and ships without the Cloudflare page-view beacon, silently. After any deploy, check the live bundle carries the beacon.
+
+**Admin (`ijourney-admin`)** has no Actions job, so deploy by hand:
 
 ```bash
-npm run build                    # Output: dist/
-npx wrangler pages deploy dist --project-name fa-recruitment-quiz
+npm run build:admin              # Output: dist-admin/
+npx wrangler pages deploy dist-admin --project-name ijourney-admin --branch main
 ```
 
 ### Environment Variables
@@ -356,6 +362,7 @@ npx wrangler pages deploy dist --project-name fa-recruitment-quiz
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
 VITE_LIFF_ID=your-liff-id
+VITE_CF_BEACON_TOKEN=cf-web-analytics-site-token   # CI reads the repo secret; unset = no page-view counts
 ```
 
 ### Hosting
