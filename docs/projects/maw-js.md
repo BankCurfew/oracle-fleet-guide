@@ -562,6 +562,21 @@ When `maw hey` sends a message containing file paths, the chip system:
 
 Ensures dashboard `/api/file` can always resolve chip paths regardless of source oracle repo.
 
+### Outbox Notices (queued `maw hey`)
+A message that can't be delivered right away waits in the target's outbox. The drain sends these
+notices (alarm key in brackets, one per message; feed line + a `maw hey` to the sender from `outbox-monitor`):
+
+| Notice | When | What the sender gets |
+|---|---|---|
+| `QUEUED-10M` (`queued10:<id>`, T559) | waited 10 min behind a **busy** pane | `[queued Nm] … still waiting behind a busy pane` + cancel / `--supersede` commands |
+| `HELD-10M` (`held10:<id>`, T4135) | waited 10 min while the target **can't receive** | `[held Nm] … is held: <reason>. It delivers when the target can receive` + the same commands |
+| `STRANDED` | outbox blocked, oldest message undelivered | feed alarm: check for stuck composer text |
+
+- HELD reasons: `target at usage limit until HH:MM` (or "reset time not on screen") · `target has no running agent` · `board hold #N` (GR07 rule 5: held orders are kept, not lost; don't resend)
+- Since T4135 (maw-js#805, main `b64e548d`, 13 Nov 2569) `QUEUED-10M` and `STRANDED` count **busy minutes only**: time held (usage limit, no agent, board hold) is subtracted and named apart (`+Nm held before, not counted`). Before it, a quota-dark spell read as "93 min pane busy" (admin 13 Nov 02:07-03:40)
+- A held message gets its HELD notice, and can still get one QUEUED notice later if the pane is then busy (separate keys)
+- Ref: Dev-Oracle `output/t4135/ROOT-CAUSE.md` · code `src/lib/outbox-notice.ts`, `src/commands/comm.ts` (noticeQueuedSenders / noticeHeldSenders)
+
 ### Known Limitations
 - Loop engine checks every 30 seconds (not sub-second precision)
 - Federation token must be >= 16 chars (no length validation error message)
